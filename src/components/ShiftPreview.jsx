@@ -189,46 +189,28 @@ export default function ShiftPreview() {
       )}
 
       <div className="preview-summary">
-        <article>
-          <small>Total asignados</small>
-          <strong>
-            {summary.total_assigned ?? '—'}
-          </strong>
+        <article className="summary-meal breakfast">
+          <span className="summary-meal-icon" aria-hidden="true">☕</span>
+          <div>
+            <small>Desayunos</small>
+            <strong>{summary.by_meal?.DESAYUNO ?? 0}</strong>
+          </div>
         </article>
 
-        <article>
-          <small>Turno día</small>
-          <strong>
-            {summary.by_shift?.DIA ?? '—'}
-          </strong>
+        <article className="summary-meal afternoon">
+          <span className="summary-meal-icon" aria-hidden="true">☀</span>
+          <div>
+            <small>Almuerzos</small>
+            <strong>{summary.by_meal?.TARDE ?? 0}</strong>
+          </div>
         </article>
 
-        <article>
-          <small>Turno noche</small>
-          <strong>
-            {summary.by_shift?.NOCHE ?? '—'}
-          </strong>
-        </article>
-
-        <article>
-          <small>Desayunos</small>
-          <strong>
-            {summary.by_meal?.DESAYUNO ?? '—'}
-          </strong>
-        </article>
-
-        <article>
-          <small>Almuerzos</small>
-          <strong>
-            {summary.by_meal?.TARDE ?? '—'}
-          </strong>
-        </article>
-
-        <article>
-          <small>Cenas</small>
-          <strong>
-            {summary.by_meal?.NOCHE ?? '—'}
-          </strong>
+        <article className="summary-meal dinner">
+          <span className="summary-meal-icon" aria-hidden="true">☾</span>
+          <div>
+            <small>Cenas</small>
+            <strong>{summary.by_meal?.NOCHE ?? 0}</strong>
+          </div>
         </article>
       </div>
 
@@ -323,8 +305,8 @@ export default function ShiftPreview() {
 
           <div className="pagination">
             <span>
-              Mostrando {preview?.data?.length || 0} de{' '}
-              {preview?.total || 0}
+              Mostrando {preview?.data?.length || 0}{' '}
+              {preview?.total != null ? `de ${preview.total} registros` : 'registros'}
             </span>
 
             <div>
