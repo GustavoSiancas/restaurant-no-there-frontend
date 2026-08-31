@@ -3,10 +3,15 @@ import { downloadMealReport, getDailyMealReport } from '../services/auth'
 import ShiftPreview, { MultiChoice } from './ShiftPreview'
 
 const EMPTY_FILTERS = { from: '', to: '', meal_type: [], shift_type: [], page: 1, page_size: 20 }
-const STATUS = { VALIDATED: 'Consumió', PENDING: 'Pedido pendiente', NOT_CLAIMED: 'No reclamó' }
+const STATUS = {
+  REQUESTED: 'Solicitado',
+  VALIDATED: 'Consumió',
+  NOT_CONSUMED: 'No consumió',
+  REQUESTED_BUT_NOT_VALIDATED: 'Solicitó sin validación',
+}
 const MEALS = { DESAYUNO: 'Desayuno', TARDE: 'Tarde', NOCHE: 'Noche' }
 
-export default function MealReports() {
+export default function MealReports({ role }) {
   const [view, setView] = useState('daily')
   const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [applied, setApplied] = useState(EMPTY_FILTERS)
@@ -29,7 +34,7 @@ export default function MealReports() {
 
   const summary = report?.summary || {}
   return <section className="reports-module"><header className="reports-heading"><div><p className="section-kicker">Análisis de alimentación</p><h1>Reportes</h1><p>Consulta la programación y el consumo del servicio de alimentación.</p></div>{view === 'daily' && <button className="excel-button" disabled={status.exporting} onClick={exportExcel}><span>⇩</span>{status.exporting ? 'Preparando Excel…' : 'Exportar Excel'}</button>}</header>
-    <div className="report-view-tabs"><button className={view === 'daily' ? 'active' : ''} onClick={() => setView('daily')}>Consumo diario</button><button className={view === 'shifts' ? 'active' : ''} onClick={() => setView('shifts')}>Preview de turnos</button></div>
+    {role === 'OWNER' && <div className="report-view-tabs"><button className={view === 'daily' ? 'active' : ''} onClick={() => setView('daily')}>Consumo diario</button><button className={view === 'shifts' ? 'active' : ''} onClick={() => setView('shifts')}>Preview de turnos</button></div>}
     {view === 'shifts' ? <ShiftPreview /> : <>
     <form className="report-filters" onSubmit={submit}><label>Desde<input type="date" value={filters.from} onChange={(event) => setFilters({ ...filters, from: event.target.value })} /></label><label>Hasta<input type="date" value={filters.to} onChange={(event) => setFilters({ ...filters, to: event.target.value })} /></label><MultiChoice label="Comidas" value={filters.meal_type} onChange={(value) => setFilters({ ...filters, meal_type: value })} options={[{ value: 'DESAYUNO', label: 'Desayuno' }, { value: 'TARDE', label: 'Tarde' }, { value: 'NOCHE', label: 'Noche' }]} /><MultiChoice label="Turnos" value={filters.shift_type} onChange={(value) => setFilters({ ...filters, shift_type: value })} options={[{ value: 'DIA', label: 'Día' }, { value: 'NOCHE', label: 'Noche' }]} /><button type="button" onClick={clear}>Limpiar</button><button className="primary-action">Aplicar filtros</button></form>
     {status.error && <p className="inline-error">{status.error}</p>}{status.notice && <p className="inline-success">✓ {status.notice}</p>}

@@ -218,7 +218,7 @@ export function confirmMyMealClaimPrint(mealType) {
   })
 }
 
-export function getMealOrders(status = 'PENDING') {
+export function getMealOrders(status = 'REQUESTED') {
   return apiRequest(`/meal-orders?${new URLSearchParams({ status })}`)
 }
 
@@ -230,10 +230,10 @@ export function validateMealOrder(id) {
   return apiRequest(`/meal-orders/${encodeURIComponent(id)}/validate`, { method: 'PATCH' })
 }
 
-export function getMealOrdersSocketUrl() {
+export function getMealOrdersSocketConnection() {
   const session = getSession()
   const socketBase = API_URL.replace(/^http/, 'ws')
-  return `${socketBase}/ws/meal-orders?${new URLSearchParams({ access_token: session?.accessToken || '' })}`
+  return { url: `${socketBase}/ws/meal-orders`, protocols: ['bearer', session?.accessToken || ''] }
 }
 
 function buildQuery(filters = {}, excluded = []) {

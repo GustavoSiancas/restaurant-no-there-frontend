@@ -293,6 +293,12 @@ form { display: grid; gap: 25px; }
 .move-banner, .move-banner button { font-size: 12px; }
 .calendar-editor header small { font-size: 11px; }.calendar-editor header strong { font-size: 20px; }.calendar-editor > label { font-size: 12px; }.calendar-editor textarea { font-size: 13px; }.calendar-editor footer > button:not(.primary-action):not(.delete-assignment), .delete-assignment, .locked-warning { font-size: 12px; }
 
+.order-status.requested { color: #704a12; background: #f3dfbd; }
+.order-status.not_consumed, .order-status.requested_but_not_validated { color: #7d342c; background: #f2d8d4; }
+.meal-order.not_consumed, .meal-order.requested_but_not_validated { border-left-color: #9a3f35; }
+.report-status.requested { color: #704a12; background: #f2dfbd; }
+.report-status.not_consumed, .report-status.requested_but_not_validated { color: #7d342c; background: #f2d8d4; }
+
 @media (max-width: 600px) {
   .workers-table th { font-size: 10px; }.workers-table td { font-size: 12px; }
   .calendar-modal { height: calc(100vh - 30px); min-height: 0; }.month-calendar { grid-template-rows: 38px repeat(6, 64px); min-height: 422px; }.calendar-day { min-height: 64px; }.calendar-day > span { font-size: 12px; }.calendar-day strong { font-size: 10px; }

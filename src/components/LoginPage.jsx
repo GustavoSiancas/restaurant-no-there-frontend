@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import { login } from '../services/auth'
-import brandLogo from '../assets/litoral-marino-logo.png'
+import brandLogo from '../assets/mesaturno-mark.svg'
 
 function BrandMark() {
   return (
-    <div className="brand" aria-label="Alimenta">
+    <div className="brand" aria-label="MesaTurno">
       <img className="brand-image" src={brandLogo} alt="" />
-      <span>ALIMENTA</span>
+      <span>MESATURNO</span>
     </div>
   )
 }
@@ -95,7 +95,7 @@ export default function LoginPage({ type, eyebrow, title, description, fields, s
               <span className="success-icon">✓</span>
               <div>
                 <strong>Sesión iniciada</strong>
-                <p>Tu acceso fue validado correctamente por Alimenta.</p>
+                <p>Tu acceso fue validado correctamente por MesaTurno.</p>
               </div>
               <button type="button" onClick={() => setSubmitted(false)}>Volver</button>
             </div>
@@ -138,7 +138,7 @@ export default function LoginPage({ type, eyebrow, title, description, fields, s
             </form>
           )}
 
-          <p className="help">¿Necesitas ayuda? <a href="mailto:soporte@alimenta.com">Contacta a soporte</a></p>
+          <p className="help">¿Necesitas ayuda? <a href="mailto:soporte@mesaturno.com">Contacta a soporte</a></p>
         </div>
         <p className="legal">Al continuar aceptas los términos de uso y la política de privacidad.</p>
       </section>
