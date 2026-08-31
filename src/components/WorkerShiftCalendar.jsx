@@ -46,12 +46,15 @@ const todayText = () => {
 }
 
 /**
- * Obtiene:
+ * Devuelve el lunes de la próxima semana.
  *
- * start = lunes de la próxima semana
- * end   = domingo de la próxima semana
+ * Ejemplo:
+ * Si hoy pertenece a la semana 31/08 - 06/09,
+ * devuelve 07/09.
+ *
+ * Desde esa fecha en adelante se puede modificar.
  */
-function getNextWeekRange() {
+function getNextWeekStart() {
   const today = new Date()
 
   // JS:
@@ -76,40 +79,26 @@ function getNextWeekRange() {
     nextMonday.getDate() + daysUntilNextMonday
   )
 
-  const nextSunday = new Date(nextMonday)
-
-  nextSunday.setDate(
-    nextSunday.getDate() + 6
+  return isoDate(
+    nextMonday.getFullYear(),
+    nextMonday.getMonth(),
+    nextMonday.getDate()
   )
-
-  return {
-    start: isoDate(
-      nextMonday.getFullYear(),
-      nextMonday.getMonth(),
-      nextMonday.getDate()
-    ),
-
-    end: isoDate(
-      nextSunday.getFullYear(),
-      nextSunday.getMonth(),
-      nextSunday.getDate()
-    ),
-  }
 }
 
 /**
- * Una fecha solamente puede modificarse
- * si pertenece a la próxima semana.
+ * REGLA PRINCIPAL
+ *
+ * Semana actual y anteriores:
+ * ❌ bloqueados
+ *
+ * Desde el lunes de la próxima semana:
+ * ✅ permitido sin límite superior
  */
 function isDateEditable(date) {
   if (!date) return false
 
-  const nextWeek = getNextWeekRange()
-
-  return (
-    date >= nextWeek.start &&
-    date <= nextWeek.end
-  )
+  return date >= getNextWeekStart()
 }
 
 function ConfirmDialog({
@@ -180,8 +169,8 @@ function ShiftEditor({
   })
 
   /**
-   * Tanto CREATE como UPDATE quedan bloqueados
-   * si la fecha no pertenece a la próxima semana.
+   * Si pertenece a semana actual o anterior,
+   * queda completamente bloqueado.
    */
   const locked = !isDateEditable(date)
 
@@ -192,7 +181,7 @@ function ShiftEditor({
       setStatus({
         loading: false,
         error:
-          'Solo se pueden crear o modificar turnos de la próxima semana.',
+          'Los turnos de la semana actual o de semanas anteriores ya no pueden modificarse.',
       })
 
       return
@@ -232,7 +221,10 @@ function ShiftEditor({
             ...payload,
           })
 
-        onChanged(result, 'create')
+        onChanged(
+          result,
+          'create'
+        )
       } else {
         const result =
           await updateShiftAssignment(
@@ -240,7 +232,10 @@ function ShiftEditor({
             payload
           )
 
-        onChanged(result, 'edit')
+        onChanged(
+          result,
+          'edit'
+        )
       }
     } catch (error) {
       setStatus({
@@ -255,7 +250,7 @@ function ShiftEditor({
       setStatus({
         loading: false,
         error:
-          'Solo se pueden eliminar turnos de la próxima semana.',
+          'Este turno ya está bloqueado y no puede eliminarse.',
       })
 
       return
@@ -268,7 +263,9 @@ function ShiftEditor({
         true
       )
 
-    if (!confirmed) return
+    if (!confirmed) {
+      return
+    }
 
     setStatus({
       loading: true,
@@ -327,8 +324,8 @@ function ShiftEditor({
 
         {locked && (
           <p className="locked-warning">
-            Solo se pueden modificar turnos
-            correspondientes a la próxima semana.
+            Esta semana ya está cerrada y
+            no admite modificaciones.
           </p>
         )}
 
@@ -541,8 +538,12 @@ export default function WorkerShiftCalendar({
       ).getDate()
     )
 
-  const nextWeek =
-    getNextWeekRange()
+  /**
+   * Primera fecha editable.
+   * No existe fecha máxima.
+   */
+  const editableFrom =
+    getNextWeekStart()
 
   function load() {
     setStatus((value) => ({
@@ -590,7 +591,7 @@ export default function WorkerShiftCalendar({
   )
 
   /**
-   * Control del arrastre/movimiento.
+   * Manejo de drag / mover turno.
    */
   useEffect(() => {
     if (!moving) return
@@ -613,8 +614,8 @@ export default function WorkerShiftCalendar({
           null
 
         /**
-         * Solo mostramos como destino
-         * fechas de la próxima semana.
+         * Solo reconocemos como destino
+         * una fecha editable.
          */
         const validDate =
           date &&
@@ -746,17 +747,15 @@ export default function WorkerShiftCalendar({
     setMoving(null)
     setHoveredDate(null)
 
-    /**
-     * Si es el mismo día,
-     * no hacemos nada.
-     */
-    if (date === oldDate) {
+    if (
+      date === oldDate
+    ) {
       return
     }
 
     /**
-     * El turno de origen también
-     * debe pertenecer a próxima semana.
+     * No se puede mover un turno
+     * perteneciente a una semana cerrada.
      */
     if (
       !isDateEditable(
@@ -767,15 +766,18 @@ export default function WorkerShiftCalendar({
         ...value,
         notice: '',
         error:
-          'Ese turno ya está bloqueado y no puede moverse.',
+          'Ese turno pertenece a una semana cerrada y no puede moverse.',
       }))
 
       return
     }
 
     /**
-     * El destino solamente puede
-     * pertenecer a próxima semana.
+     * Tampoco se puede mover hacia
+     * una semana cerrada.
+     *
+     * Cualquier fecha >= próximo lunes
+     * sí está permitida.
      */
     if (
       !isDateEditable(date)
@@ -784,15 +786,15 @@ export default function WorkerShiftCalendar({
         ...value,
         notice: '',
         error:
-          'Solo puedes mover turnos dentro de la próxima semana.',
+          `Solo puedes mover turnos desde ${editableFrom} en adelante.`,
       }))
 
       return
     }
 
     /**
-     * Máximo un turno
-     * por fecha.
+     * Un trabajador solamente puede
+     * tener un turno por fecha.
      */
     if (byDate[date]) {
       setStatus((value) => ({
@@ -865,9 +867,8 @@ export default function WorkerShiftCalendar({
     }
 
     /**
-     * Si estamos moviendo un turno,
-     * solamente aceptamos fechas
-     * de próxima semana.
+     * Si estamos moviendo:
+     * solamente aceptamos fechas editables.
      */
     if (moving) {
       if (
@@ -883,11 +884,9 @@ export default function WorkerShiftCalendar({
     }
 
     /**
-     * CREATE:
+     * CREATE
      *
-     * Solo si:
-     * - no hay turno
-     * - pertenece a próxima semana
+     * Día vacío + fecha editable.
      */
     if (
       !shift &&
@@ -909,8 +908,8 @@ export default function WorkerShiftCalendar({
       ).slice(0, 10)
 
     /**
-     * No iniciamos drag si
-     * el turno está bloqueado.
+     * Un turno de semana cerrada
+     * ni siquiera inicia el movimiento.
      */
     if (
       !isDateEditable(
@@ -1016,20 +1015,17 @@ export default function WorkerShiftCalendar({
         </h2>
 
         <p className="modal-description">
-          Solo puedes crear, editar,
-          eliminar o mover turnos de la
-          próxima semana.
+          La semana actual está cerrada.
+          Puedes crear, editar, eliminar
+          o mover turnos de semanas futuras.
         </p>
 
         <div className="planner-lock">
-          Semana editable:{' '}
+          Editable desde:{' '}
           <strong>
-            {nextWeek.start}
+            {editableFrom}
           </strong>
-          {' → '}
-          <strong>
-            {nextWeek.end}
-          </strong>
+          {' en adelante'}
         </div>
 
         <div className="calendar-toolbar">
@@ -1085,8 +1081,7 @@ export default function WorkerShiftCalendar({
             {String(
               moving.work_date
             ).slice(0, 10)}
-            . Selecciona otro día de la
-            próxima semana.
+            . Selecciona una fecha futura.
 
             <button
               onClick={() => {
@@ -1153,14 +1148,23 @@ export default function WorkerShiftCalendar({
                 byDate[date]
 
               /**
-               * AQUÍ está la nueva
-               * regla principal.
+               * BLOQUEADO:
+               * cualquier fecha anterior
+               * al lunes de próxima semana.
                */
               const locked =
                 !isDateEditable(
                   date
                 )
 
+              /**
+               * Solo mostramos destino
+               * de movimiento si:
+               *
+               * - estamos moviendo
+               * - está vacío
+               * - no está bloqueado
+               */
               const canMoveHere =
                 moving &&
                 !shift &&
@@ -1210,10 +1214,10 @@ export default function WorkerShiftCalendar({
                   }
                   onDoubleClick={() => {
                     /**
-                     * UPDATE:
+                     * UPDATE
                      *
-                     * Doble click solamente
-                     * funciona la próxima semana.
+                     * Solo fechas que no
+                     * estén bloqueadas.
                      */
                     if (
                       shift &&
