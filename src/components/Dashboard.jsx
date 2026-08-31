@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearSession, getCollaborators, getManagementUsers, getMyUser, getSession, getWorkers, registerCollaborator, registerManagement, registerWorker } from '../services/auth'
+import { clearSession, getCollaborators, getManagementUsers, getMyUser, getServerTime, getSession, getWorkers, registerCollaborator, registerManagement, registerWorker } from '../services/auth'
 import ShiftPlanner from './ShiftPlanner'
 import WorkerShiftCalendar from './WorkerShiftCalendar'
 import WorkerSchedule from './WorkerSchedule'
@@ -14,10 +14,27 @@ const PAGE_SIZE = 6
 
 function PeruClock() {
   const [now, setNow] = useState(new Date())
-  useEffect(() => { const timer = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(timer) }, [])
+  useEffect(() => {
+    let active = true
+    let serverOffset = 0
+    const update = () => setNow(new Date(Date.now() + serverOffset))
+    const timer = setInterval(update, 1000)
+
+    getServerTime().then((serverTime) => {
+      const timestamp = Date.parse(serverTime?.datetime)
+      if (!active || Number.isNaN(timestamp)) return
+      serverOffset = timestamp - Date.now()
+      update()
+    }).catch(() => {})
+
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [])
   const time = new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now)
   const date = new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', weekday: 'short', day: '2-digit', month: 'short' }).format(now)
-  return <div className="peru-clock"><span>Hora del sistema · Perú</span><strong>{time}</strong><small>{date}</small></div>
+  return <div className="peru-clock"><span>Hora del servidor · Perú</span><strong>{time}</strong><small>{date}</small></div>
 }
 
 function WorkerSessionCountdown({ onExpire }) {

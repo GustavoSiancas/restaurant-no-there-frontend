@@ -300,6 +300,10 @@ export default function ShiftPreview() {
                               {meal.display_name}
                             </b>
 
+                            <small>
+                              {meal.service_date?.slice(0, 10)}
+                            </small>
+
                             {meal.start}–{meal.end}
                           </span>
                         ))}

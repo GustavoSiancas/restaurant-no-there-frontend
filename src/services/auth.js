@@ -203,6 +203,10 @@ export function getMyWorkerStatus() {
   return apiRequest('/workers/my/status')
 }
 
+export function getServerTime() {
+  return apiRequest('/test/server-time')
+}
+
 export function getMealSchedules() {
   return apiRequest('/meal-schedules')
 }
