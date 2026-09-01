@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearSession, getCollaborators, getManagementUsers, getMyUser, getServerTime, getSession, getWorkers, registerCollaborator, registerManagement, registerWorker } from '../services/auth'
+import { clearSession, getCollaborators, getMyUser, getServerTime, getSession, getWorkers, refreshSession, registerCollaborator, registerManagement, registerWorker } from '../services/auth'
 import ShiftPlanner from './ShiftPlanner'
 import WorkerShiftCalendar from './WorkerShiftCalendar'
 import WorkerSchedule from './WorkerSchedule'
@@ -8,11 +8,27 @@ import WorkerMealOverview from './WorkerMealOverview'
 import brandLogo from '../assets/mesaturno-mark.svg'
 import MealOrders from './MealOrders'
 import MealReports from './MealReports'
+import ShiftPreview from './ShiftPreview'
 
 const MANAGEMENT_ROLES = ['ADMIN', 'OWNER', 'RRHH']
 const PAGE_SIZE = 6
+const MODULE_LABELS = {
+  overview: 'Resumen',
+  registrations: 'Registros',
+  schedule: 'Mi horario',
+  orders: 'Pedidos',
+  workers: 'Trabajadores',
+  shifts: 'Asignación de turnos masiva',
+  collaborators: 'Colaboradores',
+  reports: 'Reportes',
+  mealReports: 'Reportes de comidas',
+}
+const moduleLabel = (module, role) =>
+  module === 'orders' && role === 'OWNER'
+    ? 'Consultar pedidos'
+    : MODULE_LABELS[module] || 'Panel'
 
-function PeruClock() {
+function PeruClock({ syncWithServer = true }) {
   const [now, setNow] = useState(new Date())
   useEffect(() => {
     let active = true
@@ -20,21 +36,23 @@ function PeruClock() {
     const update = () => setNow(new Date(Date.now() + serverOffset))
     const timer = setInterval(update, 1000)
 
-    getServerTime().then((serverTime) => {
-      const timestamp = Date.parse(serverTime?.datetime)
-      if (!active || Number.isNaN(timestamp)) return
-      serverOffset = timestamp - Date.now()
-      update()
-    }).catch(() => {})
+    if (syncWithServer) {
+      getServerTime().then((serverTime) => {
+        const timestamp = Date.parse(serverTime?.datetime)
+        if (!active || Number.isNaN(timestamp)) return
+        serverOffset = timestamp - Date.now()
+        update()
+      }).catch(() => {})
+    }
 
     return () => {
       active = false
       clearInterval(timer)
     }
-  }, [])
+  }, [syncWithServer])
   const time = new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(now)
   const date = new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', weekday: 'short', day: '2-digit', month: 'short' }).format(now)
-  return <div className="peru-clock"><span>Hora del servidor · Perú</span><strong>{time}</strong><small>{date}</small></div>
+  return <div className="peru-clock"><span>{syncWithServer ? 'Hora del servidor' : 'Hora local'} · Perú</span><strong>{time}</strong><small>{date}</small></div>
 }
 
 function WorkerSessionCountdown({ onExpire }) {
@@ -136,7 +154,6 @@ export default function Dashboard() {
   const [modal, setModal] = useState(null)
   const [notice, setNotice] = useState('')
   const [workers, setWorkers] = useState([])
-  const [managementUsers, setManagementUsers] = useState([])
   const [collaborators, setCollaborators] = useState([])
   const [listsLoading, setListsLoading] = useState(false)
   const [listsError, setListsError] = useState('')
@@ -146,47 +163,85 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!getSession()) { navigate('/collaborator', { replace: true }); return }
-    getMyUser().then((currentUser) => { setUser(currentUser); if (currentUser.role === 'COLLABORATOR') setActiveModule('orders') }).catch((requestError) => {
+    getMyUser().then((currentUser) => {
+      setUser(currentUser)
+      if (currentUser.role === 'COLLABORATOR') setActiveModule('orders')
+      if (currentUser.role === 'ADMIN') setActiveModule('registrations')
+      if (currentUser.role === 'OWNER') setActiveModule('collaborators')
+    }).catch((requestError) => {
       setError(requestError.message)
       if (!getSession()) navigate('/collaborator', { replace: true })
     }).finally(() => setLoading(false))
   }, [navigate])
 
   useEffect(() => {
-    if (!user || !MANAGEMENT_ROLES.includes(user.role)) return
+    if (!user || !['OWNER', 'RRHH'].includes(user.role)) return
     let active = true
     setListsLoading(true)
     setListsError('')
-    const requests = [getWorkers()]
-    if (user.role === 'ADMIN') requests.push(getManagementUsers())
-    if (user.role === 'OWNER') requests.push(getCollaborators())
-    Promise.all(requests).then(([workerResponse, secondaryResponse]) => {
+    const requests = user.role === 'OWNER' ? [getCollaborators()] : [getWorkers()]
+    Promise.all(requests).then(([primaryResponse]) => {
       if (!active) return
-      setWorkers(normalizeList(workerResponse, ['workers', 'users', 'items', 'data']))
-      if (user.role === 'ADMIN') setManagementUsers(normalizeList(secondaryResponse, ['management', 'users', 'items', 'data']))
-      if (user.role === 'OWNER') setCollaborators(normalizeList(secondaryResponse, ['collaborators', 'users', 'items', 'data']))
+      if (user.role === 'OWNER') setCollaborators(normalizeList(primaryResponse, ['collaborators', 'users', 'items', 'data']))
+      else setWorkers(normalizeList(primaryResponse, ['workers', 'users', 'items', 'data']))
     }).catch((requestError) => active && setListsError(requestError.message)).finally(() => active && setListsLoading(false))
     return () => { active = false }
   }, [user])
 
+  useEffect(() => {
+    document.title = `${moduleLabel(activeModule, user?.role)} | MESATURNO`
+  }, [activeModule, user?.role])
+
+  useEffect(() => {
+    if (!user || user.role === 'WORKER') return
+
+    let stopped = false
+    let refreshTimer
+
+    const scheduleRefresh = (session = getSession()) => {
+      if (stopped || !session?.refreshToken) return
+      clearTimeout(refreshTimer)
+      const refreshBeforeExpiry = 30_000
+      const delay = Math.max(1_000, session.expiresAt - Date.now() - refreshBeforeExpiry)
+      refreshTimer = setTimeout(renewSession, delay)
+    }
+
+    const renewSession = async () => {
+      try {
+        const renewedSession = await refreshSession()
+        scheduleRefresh(renewedSession)
+      } catch {
+        if (stopped) return
+        if (!getSession()) {
+          navigate('/collaborator', { replace: true })
+          return
+        }
+        refreshTimer = setTimeout(renewSession, 10_000)
+      }
+    }
+
+    scheduleRefresh()
+    return () => {
+      stopped = true
+      clearTimeout(refreshTimer)
+    }
+  }, [navigate, user])
+
   function logout() { clearSession(); navigate('/collaborator', { replace: true }) }
   async function reloadLists() {
-    const workerResponse = await getWorkers()
-    setWorkers(normalizeList(workerResponse, ['workers', 'users', 'items', 'data']))
-    if (role === 'ADMIN') {
-      const managementResponse = await getManagementUsers()
-      setManagementUsers(normalizeList(managementResponse, ['management', 'users', 'items', 'data']))
-    }
     if (role === 'OWNER') {
       const collaboratorResponse = await getCollaborators()
       setCollaborators(normalizeList(collaboratorResponse, ['collaborators', 'users', 'items', 'data']))
+    } else {
+      const workerResponse = await getWorkers()
+      setWorkers(normalizeList(workerResponse, ['workers', 'users', 'items', 'data']))
     }
   }
   function closeModal(created) {
     setModal(null)
     if (created === true) {
       setNotice('Usuario creado correctamente.')
-      reloadLists().catch((requestError) => setListsError(requestError.message))
+      if (role !== 'ADMIN') reloadLists().catch((requestError) => setListsError(requestError.message))
       setTimeout(() => setNotice(''), 3500)
     }
   }
@@ -197,7 +252,7 @@ export default function Dashboard() {
   const role = user?.role
   const name = [user?.profile?.first_name, user?.profile?.last_name].filter(Boolean).join(' ') || 'Usuario'
   const initials = name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()
-  const canCreateWorker = MANAGEMENT_ROLES.includes(role)
+  const canCreateWorker = role === 'RRHH'
   const pageCount = Math.max(1, Math.ceil(workers.length / PAGE_SIZE))
   const visibleWorkers = workers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
@@ -205,18 +260,20 @@ export default function Dashboard() {
     <div className="dashboard-shell">
       <aside className="sidebar">
         <Logo />
-        <nav><button className={activeModule === 'overview' ? 'active' : ''} onClick={() => setActiveModule('overview')}><span>⌂</span>Resumen</button>{role === 'WORKER' && <button className={activeModule === 'schedule' ? 'active' : ''} onClick={() => setActiveModule('schedule')}><span>▦</span>Mi horario</button>}{['COLLABORATOR', 'OWNER'].includes(role) && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}><span>♙</span>Trabajadores</button>}{['ADMIN', 'RRHH'].includes(role) && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}><span>◫</span>Turnos</button>}{role === 'OWNER' && <button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}><span>♜</span>Colaboradores</button>}{['OWNER', 'RRHH'].includes(role) && <button className={activeModule === 'reports' ? 'active' : ''} onClick={() => setActiveModule('reports')}><span>▤</span>Reportes</button>}{role === 'ADMIN' && <button className={activeModule === 'management' ? 'active' : ''} onClick={() => setActiveModule('management')}><span>◇</span>Gestión</button>}</nav>
-        <PeruClock /><div className="sidebar-foot"><p>Registro de alimentación</p><span>Versión 1.0</span></div>
+        <nav>{role === 'ADMIN' ? <button className="active"><span>＋</span>Registros</button> : role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}><span>♜</span>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}><span>▤</span>Reportes de comidas</button></> : <><button className={activeModule === 'overview' ? 'active' : ''} onClick={() => setActiveModule('overview')}><span>⌂</span>Resumen</button>{role === 'WORKER' && <button className={activeModule === 'schedule' ? 'active' : ''} onClick={() => setActiveModule('schedule')}><span>▦</span>Mi horario</button>}{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}><span>♙</span>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}><span>◫</span>Turnos</button>}</>}</nav>
+        <PeruClock syncWithServer={role !== 'ADMIN'} /><div className="sidebar-foot"><p>Registro de alimentación</p><span>Versión 1.0</span></div>
       </aside>
       <main className="dashboard-main">
         <header className="dashboard-header"><Logo /><div className="header-session">{role === 'WORKER' && <WorkerSessionCountdown onExpire={logout} />}<div className="profile-chip"><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{role}</small></span><button onClick={logout} title="Cerrar sesión">↪</button></div></div></header>
         <div className="dashboard-content">
           {notice && <div className="toast">✓ {notice}</div>}
-          <div className="module-tabs"><button className={activeModule === 'overview' ? 'active' : ''} onClick={() => setActiveModule('overview')}>Resumen</button>{role === 'WORKER' && <button className={activeModule === 'schedule' ? 'active' : ''} onClick={() => setActiveModule('schedule')}>Mi horario</button>}{['COLLABORATOR', 'OWNER'].includes(role) && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}>Trabajadores</button>}{['ADMIN', 'RRHH'].includes(role) && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}>Turnos</button>}{role === 'OWNER' && <button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}>Colaboradores</button>}{['OWNER', 'RRHH'].includes(role) && <button className={activeModule === 'reports' ? 'active' : ''} onClick={() => setActiveModule('reports')}>Reportes</button>}{role === 'ADMIN' && <button className={activeModule === 'management' ? 'active' : ''} onClick={() => setActiveModule('management')}>Gestión</button>}</div>
+          <div className="module-route"><span>{role}</span><b>/</b><strong>{moduleLabel(activeModule, role)}</strong></div>
+          {role !== 'ADMIN' && <div className="module-tabs">{role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}>Reportes de comidas</button></> : <><button className={activeModule === 'overview' ? 'active' : ''} onClick={() => setActiveModule('overview')}>Resumen</button>{role === 'WORKER' && <button className={activeModule === 'schedule' ? 'active' : ''} onClick={() => setActiveModule('schedule')}>Mi horario</button>}{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}>Turnos</button>}</>}</div>}
+          {activeModule === 'registrations' && role === 'ADMIN' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Administración</p><h1>Registrar usuarios</h1><p>Selecciona el tipo de usuario que deseas crear.</p></div></div><div className="management-cards"><article className="manager-card"><span className="metric-icon green">♙</span><strong>Trabajador</strong><p>Registra personal mediante DNI e información laboral.</p><button className="primary-action" onClick={() => setModal('worker')}>Nuevo trabajador</button></article><article className="manager-card"><span className="metric-icon blue">◇</span><strong>Usuario de gestión</strong><p>Crea un acceso con rol Owner o Recursos Humanos.</p><button className="primary-action" onClick={() => setModal('management')}>Nuevo usuario de gestión</button></article><article className="manager-card"><span className="metric-icon orange">♜</span><strong>Colaborador</strong><p>Crea un acceso para validar y entregar pedidos.</p><button className="primary-action" onClick={() => setModal('collaborator')}>Nuevo colaborador</button></article></div></section>}
           {activeModule === 'overview' && <>
           <section className="welcome" id="overview"><div><p className="section-kicker">Panel de control</p><h1>Hola, {user?.profile?.first_name || 'bienvenido'}.</h1><p>Gestiona las personas que forman parte del servicio de alimentación.</p></div><div className="role-badge"><span>Acceso</span><strong>{role}</strong></div></section>
 
-          {role === 'WORKER' ? <WorkerMealOverview onTicketClaimed={logout} /> : <div className="metric-grid"><article><span className="metric-icon green">♙</span><div><small>Trabajadores</small><strong>{workers.length}</strong><p>Personas registradas</p></div></article>{role === 'ADMIN' && <article><span className="metric-icon blue">◇</span><div><small>Usuarios de gestión</small><strong>{managementUsers.length}</strong><p>Owners y recursos humanos</p></div></article>}<article><span className="metric-icon orange">▱</span><div><small>Tiquetes de hoy</small><strong>—</strong><p>Registro pendiente de conexión</p></div></article></div>}</>}
+          {role === 'WORKER' ? <WorkerMealOverview onTicketClaimed={logout} /> : <div className="metric-grid"><article><span className="metric-icon green">♙</span><div><small>Trabajadores</small><strong>{workers.length}</strong><p>Personas registradas</p></div></article><article><span className="metric-icon orange">▱</span><div><small>Tiquetes de hoy</small><strong>—</strong><p>Registro pendiente de conexión</p></div></article></div>}</>}
 
           {activeModule === 'workers' && canCreateWorker && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Equipo</p><h2>Trabajadores</h2><p>Personal habilitado para registrar sus comidas.</p></div><button className="primary-action" onClick={() => setModal('worker')}><span>＋</span> Nuevo trabajador</button></div>
             {listsError && <p className="inline-error">{listsError}</p>}
@@ -230,23 +287,17 @@ export default function Dashboard() {
             </> : <div className="empty-table"><strong>Aún no hay trabajadores</strong><p>Crea el primer trabajador para comenzar.</p></div>}
           </section>}
 
-          {activeModule === 'shifts' && ['ADMIN', 'RRHH'].includes(role) && <ShiftPlanner workers={workers} />}
+          {activeModule === 'shifts' && role === 'RRHH' && <ShiftPlanner workers={workers} />}
 
           {activeModule === 'schedule' && role === 'WORKER' && <WorkerSchedule />}
 
-          {activeModule === 'orders' && ['COLLABORATOR', 'OWNER'].includes(role) && <MealOrders role={role} />}
+          {activeModule === 'orders' && role === 'COLLABORATOR' && <MealOrders role={role} />}
+          {activeModule === 'orders' && role === 'OWNER' && <ShiftPreview />}
 
           {activeModule === 'collaborators' && role === 'OWNER' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Equipo operativo</p><h2>Colaboradores</h2><p>Usuarios encargados de validar la entrega de pedidos.</p></div><button className="primary-action" onClick={() => setModal('collaborator')}><span>＋</span> Nuevo colaborador</button></div><div className="management-cards">{collaborators.length ? collaborators.map((collaborator) => { const collaboratorName = [collaborator.profile?.first_name, collaborator.profile?.last_name].filter(Boolean).join(' ') || 'Sin nombre'; const username = collaborator.credentials?.find((credential) => credential.type === 'PASSWORD')?.identifier; return <article className="manager-card" key={collaborator.id}><div className="manager-card-head"><span className="manager-avatar">{collaboratorName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className={`status-dot ${collaborator.active ? 'is-active' : ''}`} /></div><strong>{collaboratorName}</strong><p>{collaborator.profile?.email || 'Sin correo'}</p><div className="manager-meta"><span>COLLABORATOR</span><span>@{username || 'sin-usuario'}</span></div></article> }) : <article className="empty-card"><span>＋</span><strong>Aún no hay colaboradores</strong><p>Crea el primer acceso operativo.</p></article>}</div></section>}
 
-          {activeModule === 'reports' && ['OWNER', 'RRHH'].includes(role) && <MealReports role={role} />}
+          {activeModule === 'mealReports' && role === 'OWNER' && <MealReports role={role} />}
 
-          {activeModule === 'management' && role === 'ADMIN' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Administración</p><h2>Usuarios de gestión</h2><p>Owners y personal de recursos humanos.</p></div><button className="secondary-action" onClick={() => setModal('management')}><span>＋</span> Crear usuario de gestión</button></div>
-            {!listsLoading && <div className="management-cards">{managementUsers.length ? managementUsers.map((manager) => {
-              const managerName = [manager.profile?.first_name, manager.profile?.last_name].filter(Boolean).join(' ') || 'Sin nombre'
-              const username = manager.credentials?.find((credential) => credential.type === 'PASSWORD')?.identifier
-              return <article className="manager-card" key={manager.id}><div className="manager-card-head"><span className="manager-avatar">{managerName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className={`status-dot ${manager.active ? 'is-active' : ''}`} title={manager.active ? 'Activo' : 'Inactivo'} /></div><strong>{managerName}</strong><p>{manager.profile?.email || 'Sin correo'}</p><div className="manager-meta"><span>{manager.role}</span><span>@{username || 'sin-usuario'}</span></div></article>
-            }) : <article className="empty-card"><span>＋</span><strong>Aún no hay usuarios</strong><p>Crea un Owner o usuario de RRHH.</p></article>}</div>}
-          </section>}
         </div>
       </main>
       {modal && <Modal title={modal === 'management' ? 'Usuario de gestión' : modal === 'collaborator' ? 'Nuevo colaborador' : 'Nuevo trabajador'} description={modal === 'management' ? 'Crea un acceso para un Owner o miembro de RRHH.' : modal === 'collaborator' ? 'Crea un acceso para validar y entregar pedidos.' : 'Registra la información laboral del nuevo trabajador.'} onClose={() => closeModal(false)}><CreateForm kind={modal} onClose={closeModal} /></Modal>}

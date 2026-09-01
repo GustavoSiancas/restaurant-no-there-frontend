@@ -2,6 +2,7 @@ const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1')
 
 const SESSION_KEY = 'alimenta_session'
 const API_BASE = API_URL
+let refreshPromise = null
 
 export async function login({ type, credentials }) {
   const endpoint = type === 'worker' ? '/auth/login/dni' : '/auth/login/password'
@@ -48,7 +49,7 @@ export function getSession() {
   }
 }
 
-export async function refreshSession() {
+async function performRefreshSession() {
   const currentSession = getSession()
   if (!currentSession?.refreshToken) {
     throw new Error('No existe una sesión para renovar.')
@@ -79,6 +80,16 @@ export async function refreshSession() {
   }
   localStorage.setItem(SESSION_KEY, JSON.stringify(renewedSession))
   return renewedSession
+}
+
+export function refreshSession() {
+  if (!refreshPromise) {
+    refreshPromise = performRefreshSession()
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
 }
 
 export function clearSession() {
@@ -178,6 +189,13 @@ export function createShiftAssignment(payload) {
   })
 }
 
+export function createMassiveShiftAssignments(payload) {
+  return apiRequest('/worker-shift-assignments/add-massive', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function updateShiftAssignment(id, payload) {
   return apiRequest(`/worker-shift-assignments/${id}`, {
     method: 'PUT',
@@ -250,9 +268,8 @@ function buildQuery(filters = {}, excluded = []) {
   return params
 }
 
-export function getDailyMealReport(filters = {}) {
-  const params = buildQuery(filters)
-  return apiRequest(`/meal-reports/daily?${params}`)
+export function getMealStatusReport(filters = {}) {
+  return apiRequest(`/meal-status-reports?${buildQuery(filters)}`)
 }
 
 async function downloadAuthenticated(path, filters = {}, fallbackName, retry = true) {
@@ -271,14 +288,14 @@ async function downloadAuthenticated(path, filters = {}, fallbackName, retry = t
   const link = document.createElement('a'); link.href = url; link.download = decodeURIComponent(filename); document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function downloadMealReport(filters = {}) {
-  return downloadAuthenticated('/meal-reports/export.xlsx', filters, 'reporte-comidas.xlsx')
+export function downloadMealStatusReport(from, to) {
+  return downloadAuthenticated('/meal-status-reports/export.xlsx', { from, to }, `reporte-comidas-${from}-${to}.xlsx`)
 }
 
 export function getShiftPreview(filters = {}) {
   return apiRequest(`/workforce/shift-preview?${buildQuery(filters)}`)
 }
 
-export function downloadShiftPreview(filters = {}) {
-  return downloadAuthenticated('/workforce/shift-preview/export.xlsx', filters, `turnos-${filters.date || 'hoy'}.xlsx`)
+export function downloadShiftPreview(from, to) {
+  return downloadAuthenticated('/workforce/shift-preview/export.xlsx', { from, to }, `turnos-${from || 'hoy'}-${to || from || 'hoy'}.xlsx`)
 }

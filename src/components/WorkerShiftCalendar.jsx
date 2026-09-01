@@ -46,59 +46,38 @@ const todayText = () => {
 }
 
 /**
- * Devuelve el lunes de la próxima semana.
- *
- * Ejemplo:
- * Si hoy pertenece a la semana 31/08 - 06/09,
- * devuelve 07/09.
- *
- * Desde esa fecha en adelante se puede modificar.
+ * Devuelve el día de mañana.
+ * Los turnos se pueden modificar con un día de anticipación.
  */
-function getNextWeekStart() {
+function getTomorrow() {
   const today = new Date()
-
-  // JS:
-  // Domingo = 0
-  // Lunes = 1
-  // ...
-  // Sábado = 6
-  const currentDay = today.getDay()
-
-  const daysUntilNextMonday =
-    currentDay === 0
-      ? 1
-      : 8 - currentDay
-
-  const nextMonday = new Date(
+  const tomorrow = new Date(
     today.getFullYear(),
     today.getMonth(),
     today.getDate()
   )
-
-  nextMonday.setDate(
-    nextMonday.getDate() + daysUntilNextMonday
-  )
+  tomorrow.setDate(tomorrow.getDate() + 1)
 
   return isoDate(
-    nextMonday.getFullYear(),
-    nextMonday.getMonth(),
-    nextMonday.getDate()
+    tomorrow.getFullYear(),
+    tomorrow.getMonth(),
+    tomorrow.getDate()
   )
 }
 
 /**
  * REGLA PRINCIPAL
  *
- * Semana actual y anteriores:
+ * Hoy y fechas anteriores:
  * ❌ bloqueados
  *
- * Desde el lunes de la próxima semana:
+ * Desde mañana:
  * ✅ permitido sin límite superior
  */
 function isDateEditable(date) {
   if (!date) return false
 
-  return date >= getNextWeekStart()
+  return date >= getTomorrow()
 }
 
 function ConfirmDialog({
@@ -169,7 +148,7 @@ function ShiftEditor({
   })
 
   /**
-   * Si pertenece a semana actual o anterior,
+   * Si corresponde a hoy o una fecha anterior,
    * queda completamente bloqueado.
    */
   const locked = !isDateEditable(date)
@@ -181,7 +160,7 @@ function ShiftEditor({
       setStatus({
         loading: false,
         error:
-          'Los turnos de la semana actual o de semanas anteriores ya no pueden modificarse.',
+          'Los turnos solo pueden modificarse con al menos un día de anticipación.',
       })
 
       return
@@ -543,7 +522,7 @@ export default function WorkerShiftCalendar({
    * No existe fecha máxima.
    */
   const editableFrom =
-    getNextWeekStart()
+    getTomorrow()
 
   function load() {
     setStatus((value) => ({
@@ -786,7 +765,7 @@ export default function WorkerShiftCalendar({
         ...value,
         notice: '',
         error:
-          `Solo puedes mover turnos desde ${editableFrom} en adelante.`,
+          `Solo puedes mover turnos desde mañana (${editableFrom}) en adelante.`,
       }))
 
       return
@@ -1015,9 +994,9 @@ export default function WorkerShiftCalendar({
         </h2>
 
         <p className="modal-description">
-          La semana actual está cerrada.
+          El día de hoy y las fechas anteriores están cerrados.
           Puedes crear, editar, eliminar
-          o mover turnos de semanas futuras.
+          o mover turnos desde mañana en adelante.
         </p>
 
         <div className="planner-lock">
@@ -1150,7 +1129,7 @@ export default function WorkerShiftCalendar({
               /**
                * BLOQUEADO:
                * cualquier fecha anterior
-               * al lunes de próxima semana.
+               * a la primera fecha editable (mañana).
                */
               const locked =
                 !isDateEditable(
