@@ -240,22 +240,27 @@ export function confirmMyMealClaimPrint(mealType) {
   })
 }
 
-export function getMealOrders(status = 'REQUESTED') {
-  return apiRequest(`/meal-orders?${new URLSearchParams({ status })}`)
+export function getMealOrders(status = 'CLAIMED') {
+  return apiRequest(`/collaborator/meal-orders?${new URLSearchParams({ status })}`)
+}
+
+export function getDailyMealOrders({ date, meal_type, page = 1, page_size = 20 }) {
+  const params = new URLSearchParams({ date, meal_type, page, page_size })
+  return apiRequest(`/collaborator/meal-status-reports/daily?${params}`)
 }
 
 export function getMealOrder(id) {
-  return apiRequest(`/meal-orders/${encodeURIComponent(id)}`)
+  return apiRequest(`/collaborator/meal-orders/${encodeURIComponent(id)}`)
 }
 
 export function validateMealOrder(id) {
-  return apiRequest(`/meal-orders/${encodeURIComponent(id)}/validate`, { method: 'PATCH' })
+  return apiRequest(`/collaborator/meal-orders/${encodeURIComponent(id)}/validate`, { method: 'PUT' })
 }
 
 export function getMealOrdersSocketConnection() {
   const session = getSession()
   const socketBase = API_URL.replace(/^http/, 'ws')
-  return { url: `${socketBase}/ws/meal-orders`, protocols: ['bearer', session?.accessToken || ''] }
+  return { url: `${socketBase}/collaborator/ws/meal-orders`, protocols: ['bearer', session?.accessToken || ''] }
 }
 
 function buildQuery(filters = {}, excluded = []) {

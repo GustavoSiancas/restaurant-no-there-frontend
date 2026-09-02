@@ -294,8 +294,23 @@ form { display: grid; gap: 25px; }
 .calendar-editor header small { font-size: 11px; }.calendar-editor header strong { font-size: 20px; }.calendar-editor > label { font-size: 12px; }.calendar-editor textarea { font-size: 13px; }.calendar-editor footer > button:not(.primary-action):not(.delete-assignment), .delete-assignment, .locked-warning { font-size: 12px; }
 
 .order-status.requested { color: #704a12; background: #f3dfbd; }
+.order-status.claimed { color: #704a12; background: #f3dfbd; }
+.order-status.created { color: #52655a; background: #e8eeea; }
+.meal-order.claimed { border-left-color: #a66b18; }
+.meal-order.created { border-left-color: #85968d; }
 .order-status.not_consumed, .order-status.requested_but_not_validated { color: #7d342c; background: #f2d8d4; }
 .meal-order.not_consumed, .meal-order.requested_but_not_validated { border-left-color: #9a3f35; }
+.orders-view-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.orders-view-tabs button { display: grid; gap: 3px; padding: 15px 17px; border: 1px solid #cbd4cf; border-radius: 10px; color: #42564b; background: white; text-align: left; cursor: pointer; }
+.orders-view-tabs button.active { border-color: #315f4b; color: #244a3a; background: #edf7f1; box-shadow: inset 0 0 0 1px #315f4b; }
+.orders-view-tabs small { color: #708078; font-size: 10px; }.orders-tabs button b { margin-left: 4px; font-size: 10px; }
+.daily-orders-filter { display: grid; grid-template-columns: minmax(210px, 260px) 1fr; align-items: end; gap: 22px; padding: 20px; border: 1px solid #cbd4cf; border-radius: 12px; background: linear-gradient(135deg, #fff, #f8faf9); box-shadow: 0 5px 18px rgba(20,42,31,.035); }
+.daily-orders-filter label { display: grid; gap: 6px; color: #52655a; font-size: 10px; font-weight: 700; }.daily-orders-filter input, .daily-orders-filter select { height: 40px; padding: 0 11px; border: 1px solid #cbd4cf; border-radius: 7px; color: #263b30; background: white; }
+.daily-static-date { display: grid; align-content: center; min-height: 58px; padding: 4px 0; }.daily-static-date > span { color: #52655a; font-size: 10px; font-weight: 700; }.daily-static-date strong { margin-top: 5px; color: #263d31; font-size: 13px; text-transform: capitalize; }.daily-static-date small { margin-top: 2px; color: #7a8981; font-size: 9px; }
+.daily-orders-filter fieldset { margin: 0; padding: 0; border: 0; }.daily-orders-filter legend { margin-bottom: 7px; color: #52655a; font-size: 10px; font-weight: 700; }.daily-orders-filter fieldset div { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }.daily-orders-filter fieldset button { display: flex; align-items: center; justify-content: center; gap: 7px; height: 40px; padding: 0 13px; border: 1px solid #cbd4cf; border-radius: 8px; color: #52655a; background: white; font-weight: 700; cursor: pointer; transition: .18s ease; }.daily-orders-filter fieldset button:hover { border-color: #6d8d7d; }.daily-orders-filter fieldset button.active { border-color: #315f4b; color: white; background: #315f4b; box-shadow: 0 5px 12px rgba(49,95,75,.18); }.daily-orders-filter fieldset button i { font-style: normal; font-size: 14px; }
+.daily-orders-summary { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 15px 18px; border: 1px solid #d7dfda; border-radius: 10px; color: #30483b; background: #f5f8f6; }.daily-orders-summary > div { display: grid; grid-template-columns: auto 1fr; align-items: baseline; column-gap: 9px; }.daily-orders-summary span { grid-column: span 2; color: #718078; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }.daily-orders-summary strong { font-size: 15px; }.daily-orders-summary div small { color: #65766d; font-size: 10px; }.daily-orders-summary > b { color: #234d3a; font-size: 22px; }.daily-orders-summary > b small { font-size: 10px; font-weight: 600; }
+.order-worker small { color: #7a8981; font-size: 9px; }
+@media (max-width: 700px) { .orders-view-tabs, .daily-orders-filter { grid-template-columns: 1fr; }.daily-orders-summary { flex-direction: column; }.daily-orders-filter fieldset div { flex-wrap: wrap; } }
 .report-status.requested { color: #704a12; background: #f2dfbd; }
 .report-status.not_consumed, .report-status.requested_but_not_validated { color: #7d342c; background: #f2d8d4; }
 
@@ -344,6 +359,21 @@ form { display: grid; gap: 25px; }
 .module-route { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #748179; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 .module-route b { color: #b0b9b4; font-weight: 400; }
 .module-route strong { color: #315f4b; font-weight: 800; }
+
+/* Los módulos usan un único título. La navegación ya comunica la sección activa. */
+.orders-heading .section-kicker,
+.orders-heading > div > p:last-child,
+.reports-heading .section-kicker,
+.reports-heading > div > p:last-child,
+.subreport-heading .section-kicker,
+.subreport-heading > div > p:last-child,
+.schedule-intro .section-kicker,
+.schedule-intro > div:first-child > p:last-child,
+.section-heading > div > .section-kicker,
+.section-heading > div > h1 + p,
+.section-heading > div > h2 + p,
+.welcome .section-kicker,
+.welcome > div > h1 + p { display: none; }
 .owner-reports { display: grid; gap: 20px; }
 .report-view-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
 .report-view-tabs > button { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 13px; min-height: 82px; padding: 15px 17px; border: 1px solid #cfd8d3; border-radius: 11px; color: #506158; background: white; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease, box-shadow .2s ease; }
