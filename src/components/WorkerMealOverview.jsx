@@ -5,8 +5,15 @@ import brandLogo from '../assets/litoral-marino-logo.png'
 const LABELS = { DESAYUNO: 'Desayuno', TARDE: 'Comida de tarde', NOCHE: 'Comida nocturna' }
 const ICONS = { DESAYUNO: '☕', TARDE: '☀', NOCHE: '☾' }
 const shortTime = (value) => String(value || '').slice(0, 5)
-const CONFIRM_MEAL_TYPES = { ALMUERZO: 'TARDE', LUNCH: 'TARDE', BREAKFAST: 'DESAYUNO', DINNER: 'NOCHE' }
-const confirmationMealType = (preview) => CONFIRM_MEAL_TYPES[preview.service?.name] || CONFIRM_MEAL_TYPES[preview.service?.type] || preview.service?.name
+const CONFIRM_MEAL_TYPES = {
+  BREAKFAST: 'BREAKFAST', DESAYUNO: 'BREAKFAST',
+  LUNCH: 'LUNCH', ALMUERZO: 'LUNCH', TARDE: 'LUNCH',
+  DINNER: 'DINNER', CENA: 'DINNER', NOCHE: 'DINNER',
+}
+const confirmationMealType = (preview) => {
+  const value = preview.service?.type || preview.service?.name || preview.meal_type
+  return CONFIRM_MEAL_TYPES[String(value || '').toUpperCase()] || value
+}
 
 async function printThermalTicket(ticket) {
   const frame = document.createElement('iframe')

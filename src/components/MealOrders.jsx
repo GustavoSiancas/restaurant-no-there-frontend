@@ -3,7 +3,8 @@ import { getDailyMealOrders, getMealOrder, getMealOrders, getMealOrdersSocketCon
 
 const PENDING = new Set(['CLAIMED', 'REQUESTED'])
 const normalize = (value) => Array.isArray(value) ? value : value?.orders || value?.items || value?.data || []
-const upsert = (list, order) => [order, ...list.filter((item) => item.id !== order.id)]
+const pendingOrders = (value) => normalize(value).filter((order) => PENDING.has(order.status))
+const upsertPending = (list, order) => PENDING.has(order.status) ? [order, ...list.filter((item) => item.id !== order.id)] : list.filter((item) => item.id !== order.id)
 const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date())
 const mealLabel = ({ meal_type, service }) => service?.name || ({ BREAKFAST: 'DESAYUNO', LUNCH: 'ALMUERZO', DINNER: 'CENA', DESAYUNO: 'DESAYUNO', TARDE: 'ALMUERZO', NOCHE: 'CENA' }[meal_type] || meal_type)
 const displayTime = (value) => value ? new Intl.DateTimeFormat('es-PE', { timeZone: 'America/Lima', dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '—'
@@ -31,7 +32,7 @@ export default function MealOrders({ role }) {
   function loadLive() {
     setStatus((s) => ({ ...s, loading: true, error: '' }))
     getMealOrders('CLAIMED')
-      .then((response) => setPending(normalize(response)))
+      .then((response) => setPending(pendingOrders(response)))
       .catch((error) => setStatus((s) => ({ ...s, error: error.message })))
       .finally(() => setStatus((s) => ({ ...s, loading: false })))
   }
@@ -59,11 +60,11 @@ export default function MealOrders({ role }) {
         try {
           const event = JSON.parse(data), order = event.data
           if (event.type === 'CLAIMED_ORDERS') {
-            setPending(normalize(event.data))
+            setPending(pendingOrders(event.data))
             return
           }
           if (!order?.id) return
-          if (event.type === 'MEAL_ORDER_CREATED') setPending((list) => upsert(list, order))
+          if (event.type === 'MEAL_ORDER_CREATED') setPending((list) => upsertPending(list, order))
           if (event.type === 'MEAL_ORDER_VALIDATED') {
             setPending((list) => list.filter((item) => item.id !== order.id))
             setDaily((result) => ({ ...result, data: result.data.map((item) => item.id === order.id ? order : item) }))
@@ -101,7 +102,9 @@ export default function MealOrders({ role }) {
     const state = STATES[order.status] || [order.status, 'Estado']
     const name = order.worker?.fullName || order.worker?.full_name || order.full_name || 'Trabajador'
     const document = order.worker?.documentNumber || order.worker?.document_number || order.document_number || 'Documento no disponible'
-    return <article className={`meal-order ${order.status.toLowerCase()}`}><div className="order-service"><span>{['DINNER', 'NOCHE'].includes(order.meal_type) ? '☾' : '☀'}</span><div><small>Servicio</small><strong>{mealLabel(order)}</strong></div></div><div className="order-worker"><strong>{name}</strong><span>{document}</span>{view === 'daily' && <small>{[order.employee_code, order.department, order.shift_type === 'DAY' ? 'Turno día' : order.shift_type === 'NIGHT' ? 'Turno noche' : order.shift_type].filter(Boolean).join(' · ')}</small>}</div><div className="order-meta"><span>{state[1]}</span><strong>{displayTime(order.validated_at || order.claimed_at)}</strong></div><span className={`order-status ${order.status.toLowerCase()}`}>{state[0]}</span>{role === 'COLLABORATOR' && PENDING.has(order.status) && <button onClick={() => setConfirming(order)}>Validar pedido</button>}</article>
+    const photo = order.worker?.photoUrl || order.worker?.photo_url
+    const initials = name.split(' ').filter(Boolean).map((part) => part[0]).slice(0, 2).join('').toUpperCase()
+    return <article className={`meal-order ${order.status.toLowerCase()}`}><div className="order-service"><span>{['DINNER', 'NOCHE'].includes(order.meal_type) ? '☾' : '☀'}</span><div><small>Servicio</small><strong>{mealLabel(order)}</strong></div></div><div className={`order-worker ${view === 'live' ? 'with-photo' : ''}`}>{view === 'live' && <div className="order-worker-photo"><span>{initials}</span>{photo && <img src={photo} alt={`Foto de ${name}`} onError={(event) => event.currentTarget.remove()} />}</div>}<div><strong>{name}</strong><span>{document}</span>{view === 'daily' && <small>{[order.employee_code, order.department, order.shift_type === 'DAY' ? 'Turno día' : order.shift_type === 'NIGHT' ? 'Turno noche' : order.shift_type].filter(Boolean).join(' · ')}</small>}</div></div><div className="order-meta"><span>{state[1]}</span><strong>{displayTime(order.validated_at || order.claimed_at)}</strong></div><span className={`order-status ${order.status.toLowerCase()}`}>{state[0]}</span>{role === 'COLLABORATOR' && PENDING.has(order.status) && <button onClick={() => setConfirming(order)}>Validar pedido</button>}</article>
   }
 
   return <section className="orders-module"><header className="orders-heading"><div><p className="section-kicker">Atención en vivo</p><h1>Pedidos de comida</h1><p>Valida pedidos en tiempo real o consulta todas las comidas de un turno.</p></div><span className={`socket-state ${status.socket}`}><i />{status.socket === 'connected' ? 'En vivo' : 'Reconectando'}</span></header>

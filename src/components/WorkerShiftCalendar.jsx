@@ -35,6 +35,12 @@ const WEEKDAYS = [
 const isoDate = (year, month, day) =>
   `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
+const normalizeShiftType = (value) => {
+  if (value === 'DIA' || value === 'DAY') return 'DAY'
+  if (value === 'NOCHE' || value === 'NIGHT') return 'NIGHT'
+  return value
+}
+
 const todayText = () => {
   const d = new Date()
 
@@ -138,7 +144,7 @@ function ShiftEditor({
   askConfirmation,
 }) {
   const [form, setForm] = useState({
-    shift_type: shift?.shift_type || 'DIA',
+    shift_type: normalizeShiftType(shift?.shift_type) || 'DAY',
     notes: shift?.notes || '',
   })
 
@@ -172,7 +178,7 @@ function ShiftEditor({
     })
 
     const payload = {
-      shift_type: form.shift_type,
+      shift_type: normalizeShiftType(form.shift_type),
       work_date: date,
       notes: form.notes,
     }
@@ -313,14 +319,14 @@ function ShiftEditor({
             type="button"
             disabled={locked}
             className={
-              form.shift_type === 'DIA'
+              form.shift_type === 'DAY'
                 ? 'selected day'
                 : ''
             }
             onClick={() =>
               setForm({
                 ...form,
-                shift_type: 'DIA',
+                shift_type: 'DAY',
               })
             }
           >
@@ -341,14 +347,14 @@ function ShiftEditor({
             type="button"
             disabled={locked}
             className={
-              form.shift_type === 'NOCHE'
+              form.shift_type === 'NIGHT'
                 ? 'selected night'
                 : ''
             }
             onClick={() =>
               setForm({
                 ...form,
-                shift_type: 'NOCHE',
+                shift_type: 'NIGHT',
               })
             }
           >
@@ -807,7 +813,7 @@ export default function WorkerShiftCalendar({
         shift.id,
         {
           shift_type:
-            shift.shift_type,
+            normalizeShiftType(shift.shift_type),
 
           work_date:
             date,
@@ -1229,8 +1235,8 @@ export default function WorkerShiftCalendar({
                       }
                     >
                       <strong>
-                        {shift.shift_type ===
-                        'DIA'
+                        {normalizeShiftType(shift.shift_type) ===
+                        'DAY'
                           ? '☀ Día'
                           : '☾ Noche'}
                       </strong>
