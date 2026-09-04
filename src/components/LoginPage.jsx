@@ -39,7 +39,7 @@ export default function LoginPage({ type, eyebrow, title, description, fields, s
     }
     const form = new FormData(event.currentTarget)
     const credentials = type === 'worker'
-      ? { dni: form.get('dni').trim() }
+      ? { dni: form.get('dni').trim(), password: form.get('password') }
       : {
           username: form.get('username').trim(),
           password: form.get('password'),

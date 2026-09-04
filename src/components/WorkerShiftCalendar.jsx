@@ -52,38 +52,16 @@ const todayText = () => {
 }
 
 /**
- * Devuelve el día de mañana.
- * Los turnos se pueden modificar con un día de anticipación.
- */
-function getTomorrow() {
-  const today = new Date()
-  const tomorrow = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  )
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  return isoDate(
-    tomorrow.getFullYear(),
-    tomorrow.getMonth(),
-    tomorrow.getDate()
-  )
-}
-
-/**
  * REGLA PRINCIPAL
  *
- * Hoy y fechas anteriores:
- * ❌ bloqueados
- *
- * Desde mañana:
- * ✅ permitido sin límite superior
+ * Cada turno se puede modificar hasta las 18:00:00
+ * del día anterior, en la zona horaria America/Lima.
  */
 function isDateEditable(date) {
   if (!date) return false
-
-  return date >= getTomorrow()
+  const startOfShiftInLima = Date.parse(`${date}T00:00:00-05:00`)
+  const cutoff = startOfShiftInLima - (6 * 60 * 60 * 1000)
+  return Date.now() <= cutoff
 }
 
 function ConfirmDialog({
@@ -166,7 +144,7 @@ function ShiftEditor({
       setStatus({
         loading: false,
         error:
-          'Los turnos solo pueden modificarse con al menos un día de anticipación.',
+          'Este turno cerró a las 6:00 p. m. del día anterior (hora de Lima).',
       })
 
       return
@@ -309,8 +287,7 @@ function ShiftEditor({
 
         {locked && (
           <p className="locked-warning">
-            Esta semana ya está cerrada y
-            no admite modificaciones.
+            Este turno ya cerró. Solo se permiten cambios hasta las 6:00 p. m. del día anterior.
           </p>
         )}
 
@@ -522,13 +499,6 @@ export default function WorkerShiftCalendar({
         0
       ).getDate()
     )
-
-  /**
-   * Primera fecha editable.
-   * No existe fecha máxima.
-   */
-  const editableFrom =
-    getTomorrow()
 
   function load() {
     setStatus((value) => ({
@@ -751,7 +721,7 @@ export default function WorkerShiftCalendar({
         ...value,
         notice: '',
         error:
-          'Ese turno pertenece a una semana cerrada y no puede moverse.',
+          'Ese turno ya superó las 6:00 p. m. del día anterior y no puede moverse.',
       }))
 
       return
@@ -771,7 +741,7 @@ export default function WorkerShiftCalendar({
         ...value,
         notice: '',
         error:
-          `Solo puedes mover turnos desde mañana (${editableFrom}) en adelante.`,
+          'El turno de destino ya cerró. Los cambios se permiten hasta las 6:00 p. m. del día anterior.',
       }))
 
       return
@@ -1000,17 +970,12 @@ export default function WorkerShiftCalendar({
         </h2>
 
         <p className="modal-description">
-          El día de hoy y las fechas anteriores están cerrados.
-          Puedes crear, editar, eliminar
-          o mover turnos desde mañana en adelante.
+          Crea, modifica, elimina o mueve los turnos antes de su hora de cierre.
         </p>
 
-        <div className="planner-lock">
-          Editable desde:{' '}
-          <strong>
-            {editableFrom}
-          </strong>
-          {' en adelante'}
+        <div className="planner-lock" role="note">
+          <strong>Advertencia:</strong>{' '}
+          máximo hasta el día anterior a las 6:00 p. m. (America/Lima).
         </div>
 
         <div className="calendar-toolbar">

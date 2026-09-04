@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearSession, getCollaborators, getMyUser, getServerTime, getSession, getWorkers, refreshSession, registerCollaborator, registerManagement, registerWorker } from '../services/auth'
+import { changeMyPassword, clearSession, getCollaborators, getMyUser, getServerTime, getSession, getUsers, getWorkers, refreshSession, registerCollaborator, registerManagement, registerWorker, resetUserPassword } from '../services/auth'
 import ShiftPlanner from './ShiftPlanner'
 import WorkerShiftCalendar from './WorkerShiftCalendar'
 import WorkerSchedule from './WorkerSchedule'
@@ -151,6 +151,38 @@ function CreateForm({ kind, onClose }) {
   )
 }
 
+function PasswordForm({ userId, onClose }) {
+  const [status, setStatus] = useState({ loading: false, error: '' })
+  const isAdminReset = Boolean(userId)
+
+  async function submit(event) {
+    event.preventDefault()
+    const values = Object.fromEntries(new FormData(event.currentTarget))
+    if (values.new_password !== values.confirm_password) {
+      setStatus({ loading: false, error: 'Las contraseñas nuevas no coinciden.' })
+      return
+    }
+    setStatus({ loading: true, error: '' })
+    try {
+      if (isAdminReset) await resetUserPassword(userId, values.new_password)
+      else await changeMyPassword({ old_password: values.old_password, new_password: values.new_password })
+      onClose(true)
+    } catch (error) {
+      setStatus({ loading: false, error: error.message })
+    }
+  }
+
+  return <form className="create-form" onSubmit={submit}>
+    <div className="form-grid password-form-grid">
+      {!isAdminReset && <Field label="Contraseña actual" name="old_password" type="password" autoComplete="current-password" />}
+      <Field label="Nueva contraseña" name="new_password" type="password" minLength="8" autoComplete="new-password" />
+      <Field label="Confirmar nueva contraseña" name="confirm_password" type="password" minLength="8" autoComplete="new-password" />
+    </div>
+    {status.error && <p className="form-error" role="alert">{status.error}</p>}
+    <div className="form-actions"><button type="button" onClick={() => onClose(false)}>Cancelar</button><button className="primary-action" disabled={status.loading}>{status.loading ? 'Guardando…' : isAdminReset ? 'Restablecer contraseña' : 'Cambiar contraseña'}</button></div>
+  </form>
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const [user, setUser] = useState(null)
@@ -160,11 +192,13 @@ export default function Dashboard() {
   const [notice, setNotice] = useState('')
   const [workers, setWorkers] = useState([])
   const [collaborators, setCollaborators] = useState([])
+  const [adminUsers, setAdminUsers] = useState([])
   const [listsLoading, setListsLoading] = useState(false)
   const [listsError, setListsError] = useState('')
   const [page, setPage] = useState(1)
   const [activeModule, setActiveModule] = useState(null)
   const [calendarWorker, setCalendarWorker] = useState(null)
+  const [passwordModal, setPasswordModal] = useState(null)
 
   useEffect(() => {
     if (!getSession()) { navigate('/collaborator', { replace: true }); return }
@@ -182,14 +216,15 @@ export default function Dashboard() {
   }, [navigate])
 
   useEffect(() => {
-    if (!user || !['OWNER', 'RRHH'].includes(user.role)) return
+    if (!user || !['ADMIN', 'OWNER', 'RRHH'].includes(user.role)) return
     let active = true
     setListsLoading(true)
     setListsError('')
-    const requests = user.role === 'OWNER' ? [getCollaborators()] : [getWorkers()]
+    const requests = user.role === 'ADMIN' ? [getUsers()] : user.role === 'OWNER' ? [getCollaborators()] : [getWorkers()]
     Promise.all(requests).then(([primaryResponse]) => {
       if (!active) return
-      if (user.role === 'OWNER') setCollaborators(normalizeList(primaryResponse, ['collaborators', 'users', 'items', 'data']))
+      if (user.role === 'ADMIN') setAdminUsers(normalizeList(primaryResponse, ['users', 'items', 'data']))
+      else if (user.role === 'OWNER') setCollaborators(normalizeList(primaryResponse, ['collaborators', 'users', 'items', 'data']))
       else setWorkers(normalizeList(primaryResponse, ['workers', 'users', 'items', 'data']))
     }).catch((requestError) => active && setListsError(requestError.message)).finally(() => active && setListsLoading(false))
     return () => { active = false }
@@ -236,7 +271,10 @@ export default function Dashboard() {
 
   function logout() { clearSession(); navigate('/collaborator', { replace: true }) }
   async function reloadLists() {
-    if (role === 'OWNER') {
+    if (role === 'ADMIN') {
+      const usersResponse = await getUsers()
+      setAdminUsers(normalizeList(usersResponse, ['users', 'items', 'data']))
+    } else if (role === 'OWNER') {
       const collaboratorResponse = await getCollaborators()
       setCollaborators(normalizeList(collaboratorResponse, ['collaborators', 'users', 'items', 'data']))
     } else {
@@ -248,7 +286,14 @@ export default function Dashboard() {
     setModal(null)
     if (created === true) {
       setNotice('Usuario creado correctamente.')
-      if (role !== 'ADMIN') reloadLists().catch((requestError) => setListsError(requestError.message))
+      reloadLists().catch((requestError) => setListsError(requestError.message))
+      setTimeout(() => setNotice(''), 3500)
+    }
+  }
+  function closePasswordModal(changed) {
+    setPasswordModal(null)
+    if (changed === true) {
+      setNotice('Contraseña actualizada correctamente.')
       setTimeout(() => setNotice(''), 3500)
     }
   }
@@ -271,11 +316,12 @@ export default function Dashboard() {
         <PeruClock syncWithServer={role !== 'ADMIN'} /><div className="sidebar-foot"><p>Registro de alimentación</p><span>Versión 1.0</span></div>
       </aside>
       <main className="dashboard-main">
-        <header className="dashboard-header"><Logo /><div className="header-session">{role === 'WORKER' && <WorkerSessionCountdown onExpire={logout} />}<div className="profile-chip"><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{role}</small></span><button onClick={logout} title="Cerrar sesión">↪</button></div></div></header>
+        <header className="dashboard-header"><Logo /><div className="header-session">{role === 'WORKER' && <WorkerSessionCountdown onExpire={logout} />}<div className="profile-chip"><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{role}</small></span><button onClick={() => setPasswordModal('self')} title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña">⚿</button><button onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">↪</button></div></div></header>
         <div className="dashboard-content">
           {notice && <div className="toast">✓ {notice}</div>}
           {role !== 'ADMIN' && role !== 'WORKER' && <div className="module-tabs">{role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}>Reportes de comidas</button></> : <>{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}>Turnos</button>}</>}</div>}
           {activeModule === 'registrations' && role === 'ADMIN' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Administración</p><h1>Registrar usuarios</h1><p>Selecciona el tipo de usuario que deseas crear.</p></div></div><div className="management-cards"><article className="manager-card"><span className="metric-icon green">♙</span><strong>Trabajador</strong><p>Registra personal mediante DNI e información laboral.</p><button className="primary-action" onClick={() => setModal('worker')}>Nuevo trabajador</button></article><article className="manager-card"><span className="metric-icon blue">◇</span><strong>Usuario de gestión</strong><p>Crea un acceso con rol Owner o Recursos Humanos.</p><button className="primary-action" onClick={() => setModal('management')}>Nuevo usuario de gestión</button></article><article className="manager-card"><span className="metric-icon orange">♜</span><strong>Colaborador</strong><p>Crea un acceso para validar y entregar pedidos.</p><button className="primary-action" onClick={() => setModal('collaborator')}>Nuevo colaborador</button></article></div></section>}
+          {activeModule === 'registrations' && role === 'ADMIN' && <section className="panel-section admin-users-section"><div className="section-heading"><div><p className="section-kicker">Seguridad</p><h2>Usuarios registrados</h2><p>Consulta los accesos y restablece sus contraseñas.</p></div></div>{listsError && <p className="inline-error">{listsError}</p>}{listsLoading ? <div className="list-loading"><span className="large-spinner" /> Cargando usuarios…</div> : adminUsers.length ? <div className="table-scroll"><table className="workers-table admin-users-table"><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Contraseña</th></tr></thead><tbody>{adminUsers.map((listedUser) => { const listedName = [listedUser.first_name, listedUser.last_name].filter(Boolean).join(' ') || 'Sin nombre'; return <tr key={listedUser.user_id}><td><div className="person-cell"><span>{listedName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><div><strong>{listedName}</strong><small>{listedUser.user_id}</small></div></div></td><td>{listedUser.email || 'Sin correo'}</td><td>{listedUser.role}</td><td><span className={`status-pill ${listedUser.active ? 'is-active' : 'is-inactive'}`}>{listedUser.active ? 'Activo' : 'Inactivo'}</span></td><td><button className="reset-password-action" onClick={() => setPasswordModal(listedUser)}>Restablecer</button></td></tr> })}</tbody></table></div> : <div className="empty-table"><strong>No hay usuarios registrados</strong></div>}</section>}
           {activeModule === 'worker' && role === 'WORKER' && <>
             <WorkerMealOverview onTicketClaimed={logout} />
             <WorkerSchedule />
@@ -305,6 +351,7 @@ export default function Dashboard() {
         </div>
       </main>
       {modal && <Modal title={modal === 'management' ? 'Usuario de gestión' : modal === 'collaborator' ? 'Nuevo colaborador' : 'Nuevo trabajador'} description={modal === 'management' ? 'Crea un acceso para un Owner o miembro de RRHH.' : modal === 'collaborator' ? 'Crea un acceso para validar y entregar pedidos.' : 'Registra la información laboral del nuevo trabajador.'} onClose={() => closeModal(false)}><CreateForm kind={modal} onClose={closeModal} /></Modal>}
+      {passwordModal && <Modal title={passwordModal === 'self' ? 'Cambiar mi contraseña' : 'Restablecer contraseña'} description={passwordModal === 'self' ? 'Confirma tu contraseña actual y define una nueva.' : `Define una nueva contraseña para ${[passwordModal.first_name, passwordModal.last_name].filter(Boolean).join(' ') || 'este usuario'}.`} onClose={() => closePasswordModal(false)}><PasswordForm userId={passwordModal === 'self' ? null : passwordModal.user_id} onClose={closePasswordModal} /></Modal>}
       {calendarWorker && <WorkerShiftCalendar worker={calendarWorker} onClose={() => setCalendarWorker(null)} />}
     </div>
   )

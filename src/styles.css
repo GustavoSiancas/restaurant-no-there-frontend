@@ -536,3 +536,9 @@ button.preview-period-card:hover { opacity: 1; border-color: #315f4b; background
 /* Tipos de turno normalizados por la API: DAY / NIGHT. */
 .calendar-day.has-shift.night { background: #fff; }
 .calendar-day.night > div { color: white; background: #334f86; }
+
+.password-form-grid { grid-template-columns: 1fr; }
+.admin-users-section { margin-top: 24px; }
+.admin-users-table { min-width: 820px; }
+.admin-users-table .person-cell small { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+.reset-password-action { min-height: 36px; padding: 0 12px; border: 1px solid #9bb1a5; border-radius: 7px; color: #28513e; background: #f3f8f5; font-size: 11px; font-weight: 700; cursor: pointer; }

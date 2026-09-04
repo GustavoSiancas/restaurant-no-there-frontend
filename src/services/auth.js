@@ -149,6 +149,24 @@ export function getMyUser() {
   return apiRequest('/users/my')
 }
 
+export function changeMyPassword(payload) {
+  return apiRequest('/users/my/password', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function getUsers() {
+  return apiRequest('/users')
+}
+
+export function resetUserPassword(userId, newPassword) {
+  return apiRequest(`/users/${encodeURIComponent(userId)}/password/reset`, {
+    method: 'PUT',
+    body: JSON.stringify({ new_password: newPassword }),
+  })
+}
+
 export function registerManagement(payload) {
   return apiRequest('/users/register/management', {
     method: 'POST',

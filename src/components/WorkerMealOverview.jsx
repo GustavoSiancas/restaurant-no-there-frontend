@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { confirmMyMealClaimPrint, getMealSchedules, getMyMealClaimPreview, getMyWorkerStatus } from '../services/auth'
 import brandLogo from '../assets/litoral-marino-logo.png'
 
-const LABELS = { DESAYUNO: 'Desayuno', TARDE: 'Comida de tarde', NOCHE: 'Comida nocturna' }
-const ICONS = { DESAYUNO: '☕', TARDE: '☀', NOCHE: '☾' }
+const LABELS = { BREAKFAST: 'Desayuno', DESAYUNO: 'Desayuno', LUNCH: 'Almuerzo', ALMUERZO: 'Almuerzo', TARDE: 'Almuerzo', DINNER: 'Cena', CENA: 'Cena', NOCHE: 'Cena' }
+const ICONS = { BREAKFAST: '☕', DESAYUNO: '☕', LUNCH: '☀', ALMUERZO: '☀', TARDE: '☀', DINNER: '☾', CENA: '☾', NOCHE: '☾' }
 const shortTime = (value) => String(value || '').slice(0, 5)
+const mealLabel = (value) => LABELS[String(value || '').toUpperCase()] || value
+const shiftLabel = (value) => ['DAY', 'DIA'].includes(value) ? 'Día' : ['NIGHT', 'NOCHE'].includes(value) ? 'Noche' : value
 const CONFIRM_MEAL_TYPES = {
   BREAKFAST: 'BREAKFAST', DESAYUNO: 'BREAKFAST',
   LUNCH: 'LUNCH', ALMUERZO: 'LUNCH', TARDE: 'LUNCH',
@@ -32,7 +34,7 @@ async function printThermalTicket(ticket) {
   printDocument.querySelector('.brand').prepend(logo)
   await logo.decode().catch(() => {})
   const fill = (id, value) => { printDocument.getElementById(id).textContent = value || '-' }
-  fill('service', ticket.service?.name); fill('worker', ticket.worker?.fullName); fill('document', ticket.worker?.documentNumber); fill('datetime', `${ticket.date} · ${ticket.time}`); fill('number', ticket.ticketNumber); fill('redemption', ticket.redemptionId)
+  fill('service', mealLabel(ticket.service?.name || ticket.service?.type || ticket.meal_type)); fill('worker', ticket.worker?.fullName); fill('document', ticket.worker?.documentNumber); fill('datetime', `${ticket.date} · ${ticket.time}`); fill('number', ticket.ticketNumber); fill('redemption', ticket.redemptionId)
   frame.contentWindow.focus()
   frame.contentWindow.print()
   setTimeout(() => frame.remove(), 1000)
@@ -53,7 +55,7 @@ function TicketDialog({ preview, onClose }) {
     } catch (requestError) { setError(requestError.message); setPrinting(false) }
   }
 
-  return <div className="ticket-dialog-backdrop"><section className="ticket-dialog" role="dialog" aria-modal="true"><button className="ticket-close" onClick={() => onClose(completed)}>×</button>{completed ? <><div className="ticket-status authorized">✓</div><p className="section-kicker">Impresión completada</p><h2>Ticket cobrado</h2><p className="print-question">El reclamo quedó registrado correctamente. Tu sesión se cerrará al continuar.</p><button className="close-denied" onClick={() => onClose(true)}>Listo</button></> : authorized ? <><div className="ticket-status authorized">✓</div><p className="section-kicker">Comida autorizada</p><h2>¿Deseas imprimir el ticket?</h2><p className="print-question">{preview.service?.name} · {preview.date} · {preview.time}</p>{error && <p className="inline-error">{error}</p>}<div className="ticket-question-actions"><button onClick={() => onClose(false)}>No, cancelar</button><button className="print-ticket-action" disabled={printing} onClick={printTicket}>{printing ? 'Enviando a imprimir…' : 'Sí, imprimir ticket'}</button></div></> : <><div className="ticket-status denied">!</div><p className="section-kicker">Solicitud rechazada</p><h2>No puedes generar un ticket</h2><p className="denied-reason">{preview.reason || 'No existe una comida disponible para reclamar.'}</p><div className="denied-details"><span>{preview.worker?.fullName}</span><strong>{preview.date} · {preview.time}</strong></div><button className="close-denied" onClick={() => onClose(false)}>Entendido</button></>}</section></div>
+  return <div className="ticket-dialog-backdrop"><section className="ticket-dialog" role="dialog" aria-modal="true"><button className="ticket-close" onClick={() => onClose(completed)}>×</button>{completed ? <><div className="ticket-status authorized">✓</div><p className="section-kicker">Impresión completada</p><h2>Ticket cobrado</h2><p className="print-question">El reclamo quedó registrado correctamente. Tu sesión se cerrará al continuar.</p><button className="close-denied" onClick={() => onClose(true)}>Listo</button></> : authorized ? <><div className="ticket-status authorized">✓</div><p className="section-kicker">Comida autorizada</p><h2>¿Deseas imprimir el ticket?</h2><p className="print-question">{mealLabel(preview.service?.name || preview.service?.type || preview.meal_type)} · {preview.date} · {preview.time}</p>{error && <p className="inline-error">{error}</p>}<div className="ticket-question-actions"><button onClick={() => onClose(false)}>No, cancelar</button><button className="print-ticket-action" disabled={printing} onClick={printTicket}>{printing ? 'Enviando a imprimir…' : 'Sí, imprimir ticket'}</button></div></> : <><div className="ticket-status denied">!</div><p className="section-kicker">Solicitud rechazada</p><h2>No puedes generar un ticket</h2><p className="denied-reason">{preview.reason || 'No existe una comida disponible para reclamar.'}</p><div className="denied-details"><span>{preview.worker?.fullName}</span><strong>{preview.date} · {preview.time}</strong></div><button className="close-denied" onClick={() => onClose(false)}>Entendido</button></>}</section></div>
 }
 
 export default function WorkerMealOverview({ onTicketClaimed }) {
@@ -80,7 +82,7 @@ export default function WorkerMealOverview({ onTicketClaimed }) {
   let stateTitle = 'No tienes una comida disponible ahora'
   let stateText = status?.on_shift ? 'Consulta los horarios disponibles y vuelve durante tu próxima ventana.' : 'No tienes un turno activo para este momento.'
   if (meal?.already_claimed) { stateTitle = 'Tu comida ya fue reclamada'; stateText = 'El registro de esta ventana de alimentación ya fue completado.' }
-  if (canClaim) { stateTitle = `${LABELS[meal.meal_type] || meal.meal_type} disponible`; stateText = `Puedes reclamarla entre las ${meal.window_start} y las ${meal.window_end}.` }
+  if (canClaim) { stateTitle = `${mealLabel(meal.meal_type)} disponible`; stateText = `Puedes reclamarla entre las ${meal.window_start} y las ${meal.window_end}.` }
   async function requestTicket() {
     setPreviewLoading(true); setPreviewError('')
     try {
@@ -95,8 +97,8 @@ export default function WorkerMealOverview({ onTicketClaimed }) {
   }
 
   return <div className="worker-meal-overview">
-    <section className={`claim-card ${canClaim ? 'can-claim' : ''}`}><div className="claim-icon">{canClaim ? '✓' : '—'}</div><div><p className="section-kicker">Estado de alimentación</p><h2>{stateTitle}</h2><p>{stateText}</p>{status?.current_shift && <span className="current-shift">Turno actual: {status.current_shift.shift_type}</span>}{previewError && <p className="claim-error">{previewError}</p>}</div>{canClaim && <button type="button" disabled={previewLoading} onClick={requestTicket}>{previewLoading ? 'Consultando…' : 'Imprimir ticket'} <span>→</span></button>}</section>
-    <section className="meal-schedules"><div className="section-heading"><div><p className="section-kicker">Información diaria</p><h2>Horarios de comidas</h2><p>Recuerda realizar el registro dentro de la ventana correspondiente.</p></div><span className="timezone-label">Hora de Perú · America/Lima</span></div><div className="schedule-grid">{schedules.filter((schedule) => schedule.active).map((schedule) => <article key={schedule.meal_type}><span className="meal-icon">{ICONS[schedule.meal_type] || '●'}</span><div><small>{LABELS[schedule.meal_type] || schedule.meal_type}</small><strong>{shortTime(schedule.claim_start)} – {shortTime(schedule.claim_end)}</strong><p>{schedule.description}</p></div></article>)}</div></section>
+    <section className={`claim-card ${canClaim ? 'can-claim' : ''}`}><div className="claim-icon">{canClaim ? '✓' : '—'}</div><div><p className="section-kicker">Estado de alimentación</p><h2>{stateTitle}</h2><p>{stateText}</p>{status?.current_shift && <span className="current-shift">Turno actual: {shiftLabel(status.current_shift.shift_type)}</span>}{previewError && <p className="claim-error">{previewError}</p>}</div>{canClaim && <button type="button" disabled={previewLoading} onClick={requestTicket}>{previewLoading ? 'Consultando…' : 'Imprimir ticket'} <span>→</span></button>}</section>
+    <section className="meal-schedules"><div className="section-heading"><div><p className="section-kicker">Información diaria</p><h2>Horarios de comidas</h2><p>Recuerda realizar el registro dentro de la ventana correspondiente.</p></div><span className="timezone-label">Hora de Perú · America/Lima</span></div><div className="schedule-grid">{schedules.filter((schedule) => schedule.active).map((schedule) => <article key={schedule.meal_type}><span className="meal-icon">{ICONS[schedule.meal_type] || '●'}</span><div><small>{mealLabel(schedule.meal_type)}</small><strong>{shortTime(schedule.claim_start)} – {shortTime(schedule.claim_end)}</strong><p>{schedule.description}</p></div></article>)}</div></section>
     {preview && <TicketDialog preview={preview} onClose={(printed) => {
       setPreview(null)
       if (printed) onTicketClaimed?.()

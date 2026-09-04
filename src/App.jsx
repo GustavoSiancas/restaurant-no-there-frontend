@@ -8,7 +8,7 @@ function WorkerForm() {
       type="worker"
       eyebrow="Acceso de personal"
       title="Bienvenido a tu jornada."
-      description="Ingresa tu documento para registrar tu acceso de forma rápida y segura."
+      description="Ingresa tu DNI y contraseña para acceder a tu jornada."
       fields={[
         {
           id: 'dni',
@@ -20,8 +20,15 @@ function WorkerForm() {
           pattern: '[0-9]{6,12}',
           hint: 'Entre 6 y 12 números, sin puntos ni espacios.',
         },
+        {
+          id: 'password',
+          label: 'Contraseña',
+          type: 'password',
+          placeholder: 'Ingresa tu contraseña',
+          autoComplete: 'current-password',
+        },
       ]}
-      submitLabel="Continuar"
+      submitLabel="Iniciar sesión"
     />
   )
 }
