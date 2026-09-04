@@ -269,7 +269,10 @@ export default function Dashboard() {
     }
   }, [navigate, user])
 
-  function logout() { clearSession(); navigate('/collaborator', { replace: true }) }
+  function logout() {
+    clearSession()
+    navigate(user?.role === 'WORKER' ? '/worker' : '/collaborator', { replace: true })
+  }
   async function reloadLists() {
     if (role === 'ADMIN') {
       const usersResponse = await getUsers()
