@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { changeMyPassword, clearSession, getCollaborators, getMyUser, getServerTime, getSession, getUsers, getWorkers, refreshSession, registerCollaborator, registerManagement, registerWorker, resetUserPassword } from '../services/auth'
 import ShiftPlanner from './ShiftPlanner'
@@ -9,6 +9,9 @@ import brandLogo from '../assets/mesaturno-mark.svg'
 import MealOrders from './MealOrders'
 import MealReports from './MealReports'
 import ShiftPreview from './ShiftPreview'
+import MealDates from './MealDates'
+import FoodImageSelect from './FoodImageSelect'
+import { uploadImage } from '../services/auth'
 
 const MANAGEMENT_ROLES = ['ADMIN', 'OWNER', 'RRHH']
 const PAGE_SIZE = 6
@@ -22,6 +25,7 @@ const MODULE_LABELS = {
   collaborators: 'Colaboradores',
   reports: 'Reportes',
   mealReports: 'Reportes de comidas',
+  mealDates: 'Fecha de comidas',
 }
 const moduleLabel = (module, role) =>
   module === 'orders' && role === 'OWNER'
@@ -101,31 +105,43 @@ function Field({ label, required = true, ...props }) {
 }
 
 function CreateForm({ kind, onClose }) {
+  const [image, setImage] = useState(null)
+  const uploadedImage = useRef(null)
+  const submitting = useRef(false)
   const [status, setStatus] = useState({ loading: false, error: '' })
   const management = kind === 'management'
   const collaborator = kind === 'collaborator'
 
   async function submit(event) {
     event.preventDefault()
+    if (submitting.current) return
     const values = Object.fromEntries(new FormData(event.currentTarget))
-    if (!management && !collaborator) {
-      values.photo_url = values.photo_url?.trim()
-      if (!values.photo_url) delete values.photo_url
-    }
+    submitting.current = true
     setStatus({ loading: true, error: '' })
     try {
       if (management) await registerManagement(values)
       else if (collaborator) await registerCollaborator(values)
-      else await registerWorker(values)
+      else {
+        if (image) {
+          if (uploadedImage.current?.file !== image) {
+            const uploaded = await uploadImage(image)
+            uploadedImage.current = { file: image, url: uploaded.url }
+          }
+          values.photo_url = uploadedImage.current.url
+        }
+        await registerWorker(values)
+      }
       onClose(true)
     } catch (error) {
       setStatus({ loading: false, error: error.message })
+    } finally {
+      submitting.current = false
     }
   }
 
   return (
     <form className="create-form" onSubmit={submit}>
-      <div className="form-grid">
+      <fieldset className="form-grid worker-create-fields" disabled={status.loading}>
         {management || collaborator ? <>
           <Field label="Usuario" name="username" placeholder="Ej. owner1" autoComplete="off" />
           <Field label="Contraseña" name="password" type="password" minLength="8" placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
@@ -139,14 +155,14 @@ function CreateForm({ kind, onClose }) {
           <Field label="Nombre" name="first_name" placeholder="Juan" />
           <Field label="Apellido" name="last_name" placeholder="Pérez" />
           <Field label="Correo" name="email" type="email" placeholder="worker@empresa.com" />
-          <Field label="URL de foto (opcional)" name="photo_url" type="url" placeholder="https://cdn.example.com/workers/juan.jpg" required={false} />
+          <FoodImageSelect file={image} disabled={status.loading} onChange={(file) => { setImage(file); uploadedImage.current = null }} />
           <Field label="Cargo" name="job_title" placeholder="Operario" />
           <Field label="Departamento" name="department" placeholder="Producción" />
           <Field label="Fecha de contratación" name="hire_date" type="date" />
         </>}
-      </div>
+      </fieldset>
       {status.error && <p className="form-error" role="alert">{status.error}</p>}
-      <div className="form-actions"><button type="button" onClick={() => onClose(false)}>Cancelar</button><button className="primary-action" disabled={status.loading}>{status.loading ? 'Guardando…' : 'Crear usuario'}</button></div>
+      <div className="form-actions"><button type="button" disabled={status.loading} onClick={() => onClose(false)}>Cancelar</button><button className="primary-action" disabled={status.loading}>{status.loading ? 'Guardando…' : 'Crear usuario'}</button></div>
     </form>
   )
 }
@@ -315,14 +331,14 @@ export default function Dashboard() {
     <div className="dashboard-shell">
       <aside className="sidebar">
         <Logo />
-        <nav>{role === 'ADMIN' ? <button className="active"><span>＋</span>Registros</button> : role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}><span>♜</span>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}><span>▤</span>Reportes de comidas</button></> : role === 'WORKER' ? <button className="active"><span>▣</span>Mi alimentación</button> : <>{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}><span>♙</span>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}><span>◫</span>Turnos</button>}</>}</nav>
+        <nav>{role === 'ADMIN' ? <button className="active"><span>＋</span>Registros</button> : role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}><span>♜</span>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}><span>▤</span>Reportes de comidas</button><button className={activeModule === 'mealDates' ? 'active' : ''} onClick={() => setActiveModule('mealDates')}><span>◫</span>Fecha de comidas</button></> : role === 'WORKER' ? <button className="active"><span>▣</span>Mi alimentación</button> : <>{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}><span>▣</span>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}><span>♙</span>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}><span>◫</span>Turnos</button>}</>}</nav>
         <PeruClock syncWithServer={role !== 'ADMIN'} /><div className="sidebar-foot"><p>Registro de alimentación</p><span>Versión 1.0</span></div>
       </aside>
       <main className="dashboard-main">
         <header className="dashboard-header"><Logo /><div className="header-session">{role === 'WORKER' && <WorkerSessionCountdown onExpire={logout} />}<div className="profile-chip"><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{role}</small></span><button onClick={() => setPasswordModal('self')} title="Cambiar mi contraseña" aria-label="Cambiar mi contraseña">⚿</button><button onClick={logout} title="Cerrar sesión" aria-label="Cerrar sesión">↪</button></div></div></header>
         <div className="dashboard-content">
           {notice && <div className="toast">✓ {notice}</div>}
-          {role !== 'ADMIN' && role !== 'WORKER' && <div className="module-tabs">{role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}>Reportes de comidas</button></> : <>{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}>Turnos</button>}</>}</div>}
+          {role !== 'ADMIN' && role !== 'WORKER' && <div className="module-tabs">{role === 'OWNER' ? <><button className={activeModule === 'collaborators' ? 'active' : ''} onClick={() => setActiveModule('collaborators')}>Colaboradores</button><button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Consultar pedidos</button><button className={activeModule === 'mealReports' ? 'active' : ''} onClick={() => setActiveModule('mealReports')}>Reportes de comidas</button><button className={activeModule === 'mealDates' ? 'active' : ''} onClick={() => setActiveModule('mealDates')}>Fecha de comidas</button></> : <>{role === 'COLLABORATOR' && <button className={activeModule === 'orders' ? 'active' : ''} onClick={() => setActiveModule('orders')}>Pedidos</button>}{canCreateWorker && <button className={activeModule === 'workers' ? 'active' : ''} onClick={() => setActiveModule('workers')}>Trabajadores</button>}{role === 'RRHH' && <button className={activeModule === 'shifts' ? 'active' : ''} onClick={() => setActiveModule('shifts')}>Turnos</button>}</>}</div>}
           {activeModule === 'registrations' && role === 'ADMIN' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Administración</p><h1>Registrar usuarios</h1><p>Selecciona el tipo de usuario que deseas crear.</p></div></div><div className="management-cards"><article className="manager-card"><span className="metric-icon green">♙</span><strong>Trabajador</strong><p>Registra personal mediante DNI e información laboral.</p><button className="primary-action" onClick={() => setModal('worker')}>Nuevo trabajador</button></article><article className="manager-card"><span className="metric-icon blue">◇</span><strong>Usuario de gestión</strong><p>Crea un acceso con rol Owner o Recursos Humanos.</p><button className="primary-action" onClick={() => setModal('management')}>Nuevo usuario de gestión</button></article><article className="manager-card"><span className="metric-icon orange">♜</span><strong>Colaborador</strong><p>Crea un acceso para validar y entregar pedidos.</p><button className="primary-action" onClick={() => setModal('collaborator')}>Nuevo colaborador</button></article></div></section>}
           {activeModule === 'registrations' && role === 'ADMIN' && <section className="panel-section admin-users-section"><div className="section-heading"><div><p className="section-kicker">Seguridad</p><h2>Usuarios registrados</h2><p>Consulta los accesos y restablece sus contraseñas.</p></div></div>{listsError && <p className="inline-error">{listsError}</p>}{listsLoading ? <div className="list-loading"><span className="large-spinner" /> Cargando usuarios…</div> : adminUsers.length ? <div className="table-scroll"><table className="workers-table admin-users-table"><thead><tr><th>Usuario</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Contraseña</th></tr></thead><tbody>{adminUsers.map((listedUser) => { const listedName = [listedUser.first_name, listedUser.last_name].filter(Boolean).join(' ') || 'Sin nombre'; return <tr key={listedUser.user_id}><td><div className="person-cell"><span>{listedName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><div><strong>{listedName}</strong><small>{listedUser.user_id}</small></div></div></td><td>{listedUser.email || 'Sin correo'}</td><td>{listedUser.role}</td><td><span className={`status-pill ${listedUser.active ? 'is-active' : 'is-inactive'}`}>{listedUser.active ? 'Activo' : 'Inactivo'}</span></td><td><button className="reset-password-action" onClick={() => setPasswordModal(listedUser)}>Restablecer</button></td></tr> })}</tbody></table></div> : <div className="empty-table"><strong>No hay usuarios registrados</strong></div>}</section>}
           {activeModule === 'worker' && role === 'WORKER' && <>
@@ -350,6 +366,7 @@ export default function Dashboard() {
           {activeModule === 'collaborators' && role === 'OWNER' && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Equipo operativo</p><h2>Colaboradores</h2><p>Usuarios encargados de validar la entrega de pedidos.</p></div><button className="primary-action" onClick={() => setModal('collaborator')}><span>＋</span> Nuevo colaborador</button></div><div className="management-cards">{collaborators.length ? collaborators.map((collaborator) => { const collaboratorName = [collaborator.profile?.first_name, collaborator.profile?.last_name].filter(Boolean).join(' ') || 'Sin nombre'; const username = collaborator.credentials?.find((credential) => credential.type === 'PASSWORD')?.identifier; return <article className="manager-card" key={collaborator.id}><div className="manager-card-head"><span className="manager-avatar">{collaboratorName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><span className={`status-dot ${collaborator.active ? 'is-active' : ''}`} /></div><strong>{collaboratorName}</strong><p>{collaborator.profile?.email || 'Sin correo'}</p><div className="manager-meta"><span>COLLABORATOR</span><span>@{username || 'sin-usuario'}</span></div></article> }) : <article className="empty-card"><span>＋</span><strong>Aún no hay colaboradores</strong><p>Crea el primer acceso operativo.</p></article>}</div></section>}
 
           {activeModule === 'mealReports' && role === 'OWNER' && <MealReports role={role} />}
+          {activeModule === 'mealDates' && role === 'OWNER' && <MealDates />}
 
         </div>
       </main>

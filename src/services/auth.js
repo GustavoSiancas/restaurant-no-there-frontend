@@ -4,6 +4,21 @@ const SESSION_KEY = 'alimenta_session'
 const API_BASE = API_URL
 let refreshPromise = null
 
+export function getFoodDays(date) {
+  return apiRequest(`/food-days?${new URLSearchParams({ date })}`)
+}
+
+export function deleteFoodDay(id) {
+  return apiRequest(`/food-days/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function createFoodDay({ service_date, meal_type, food_id }) {
+  return apiRequest('/food-days', {
+    method: 'POST',
+    body: JSON.stringify({ service_date, meal_type, food_id }),
+  })
+}
+
 export async function login({ type, credentials }) {
   const endpoint = type === 'worker' ? '/auth/login/dni' : '/auth/login/password'
   let response
@@ -245,6 +260,46 @@ export function getServerTime() {
 
 export function getMealSchedules() {
   return apiRequest('/meal-schedules')
+}
+
+export function createTag(payload) {
+  return apiRequest('/tags', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export async function uploadImage(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+    throw new Error('Selecciona una imagen JPEG, PNG, WebP o GIF.')
+  }
+  const signed = await apiRequest('/images/presigned-upload', {
+    method: 'POST', body: JSON.stringify({ content_type: file.type }),
+  })
+  if (!signed.upload_url || !signed.key || signed.method !== 'PUT') {
+    throw new Error('El servidor no devolvió los datos de subida esperados.')
+  }
+  const photoUrl = signed.photo_url
+  if (!photoUrl) throw new Error('El servidor no devolvió photo_url para asociar la imagen.')
+  let response
+  try {
+    response = await fetch(signed.upload_url, {
+      method: signed.method, headers: signed.headers, body: file,
+    })
+  } catch {
+    throw new Error('No se pudo subir la imagen. Intenta nuevamente.')
+  }
+  if (!response.ok) throw new Error('No se pudo subir la imagen. Intenta nuevamente.')
+  return { key: signed.key, url: photoUrl }
+}
+
+export function createFood(payload) {
+  return apiRequest('/foods', { method: 'POST', body: JSON.stringify(payload) })
+}
+
+export function getFoods({ page = 1, page_size = 20, name = '', tag_ids = [] } = {}) {
+  const params = new URLSearchParams({ page, page_size })
+  if (name.trim()) params.set('name', name.trim())
+  const tags = Array.isArray(tag_ids) ? tag_ids.join(',') : tag_ids
+  if (tags) params.set('tag_ids', tags)
+  return apiRequest(`/foods?${params}`)
 }
 
 export function getMyMealClaimPreview() {

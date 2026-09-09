@@ -538,7 +538,140 @@ button.preview-period-card:hover { opacity: 1; border-color: #315f4b; background
 .calendar-day.night > div { color: white; background: #334f86; }
 
 .password-form-grid { grid-template-columns: 1fr; }
+.meal-dates-navigation { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.meal-dates-navigation p { flex: 1; margin: 0; color: #40574b; font-size: 15px; line-height: 1.6; text-align: center; }
+.meal-dates-navigation button { flex-shrink: 0; min-width: 42px; min-height: 42px; padding: 8px 12px; border: 1px solid #c9d5ce; border-radius: 8px; color: #315f4b; background: white; cursor: pointer; }
+.meal-dates-navigation button:hover:not(:disabled) { background: #edf3ef; }
+.meal-dates-navigation button:disabled { opacity: .5; cursor: default; }
+.meal-dates-scroll { overflow-x: auto; border: 1px solid #dce3de; border-radius: 12px; }
+.meal-dates-grid { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); min-width: 770px; }
+.meal-dates-day { background: #fff; border-right: 1px solid #dce3de; }
+.meal-dates-day:last-child { border-right: 0; }
+.meal-dates-day header { display: flex; align-items: center; flex-direction: column; gap: 8px; padding: 20px 8px 14px; border-bottom: 1px solid #dce3de; }
+.meal-dates-day header > span { color: #64746a; font-size: 13px; }
+.meal-dates-day time { color: #26382f; font: 700 26px 'Manrope', sans-serif; }
+.meal-dates-day small { color: #59616a; font-size: 12px; }
+.meal-dates-empty { height: 360px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 89px, #e5e9e6 89px, #e5e9e6 90px); }
+.meal-dates-day.is-today { background: #e5e7eb; }
+.meal-dates-day.is-today header { background: #d1d5db; }
+.dashboard-content:has(.meal-dates) { width: 100%; }
+.meal-dates-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; gap: 24px; }
+.meal-dates-calendar { min-width: 0; }
+.meal-dates-calendar .meal-dates-navigation { flex-wrap: wrap; }
+.meal-dates-calendar .meal-dates-navigation .meal-dates-current { margin-left: auto; }
+.food-list { min-width: 0; padding: 18px; border: 1px solid #dce3de; border-radius: 12px; background: #f7f9f7; }
+.food-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 18px; }
+.food-list-heading h3 { margin: 0; font-size: 18px; }
+.food-list-heading > span { color: #64746a; font-size: 12px; }
+.food-list-search label { display: block; margin-bottom: 8px; color: #40574b; font-size: 13px; }
+.food-list-search > div { display: flex; gap: 6px; }
+.food-list-search input { min-width: 0; width: 100%; padding: 10px; border: 1px solid #c9d5ce; border-radius: 7px; background: white; }
+.food-list button { min-height: 36px; padding: 7px 10px; border: 1px solid #c9d5ce; border-radius: 7px; color: #315f4b; background: white; cursor: pointer; }
+.food-list button:hover:not(:disabled) { background: #edf3ef; }
+.food-list button:disabled { opacity: .5; cursor: default; }
+.food-list-results { margin-top: 16px; max-height: 650px; overflow-y: auto; }
+.food-list-results > p, .food-list-results > div > p { color: #64746a; font-size: 14px; line-height: 1.5; }
+.food-list-cards { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.food-card { display: flex; align-items: center; overflow: hidden; border: 1px solid #dce3de; border-radius: 10px; background: white; }
+.food-card > img { display: block; flex: 0 0 76px; width: 76px; height: 76px; margin: 12px 0 12px 12px; border-radius: 8px; object-fit: cover; }
+.food-card-info { min-width: 0; flex: 1; padding: 14px; overflow-wrap: anywhere; }
+.food-card h4 { margin: 0; color: #26382f; font-size: 15px; }
+.food-card p { margin: 8px 0; color: #64746a; font-size: 13px; line-height: 1.5; }
+.food-card-calories { display: block; margin-top: 10px; color: #40574b; font-size: 12px; }
+.food-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.food-card-tags li { padding: 4px 8px; border-radius: 6px; color: #315f4b; background: #edf3ef; font-size: 11px; }
+.food-list-pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; margin-top: 16px; }
+.food-list-pagination button[aria-current="page"] { opacity: 1; color: white; background: #315f4b; border-color: #315f4b; }
+.food-page-gap { padding: 0 3px; }
+.food-create-open { width: 100%; margin-bottom: 16px; }
+.image-upload { display: grid; gap: 10px; min-width: 0; }
+.image-upload > img { width: 100%; max-width: 220px; height: 140px; object-fit: cover; border-radius: 8px; }
+.image-upload p { margin: 0; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.image-upload input[type="file"] { height: auto; padding: 10px; }
+.food-dialog { width: min(560px, calc(100% - 32px)); max-height: calc(100dvh - 40px); padding: 28px; border: 0; border-radius: 16px; color: #26382f; background: #fbfcfa; box-shadow: 0 30px 80px rgba(9,24,17,.28); }
+.food-dialog::backdrop { background: rgba(15,30,23,.55); backdrop-filter: blur(4px); }
+.food-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.food-dialog h2 { margin: 0; font-size: 24px; }
+.food-dialog button { min-height: 38px; padding: 8px 14px; border: 1px solid #c9d5ce; border-radius: 8px; color: #315f4b; background: white; cursor: pointer; }
+.food-dialog button:disabled { opacity: .5; cursor: default; }
+.food-dialog button:focus-visible { outline: 2px solid #315f4b; outline-offset: 3px; }
+.food-dialog .food-create { margin: 0; padding: 0; border: 0; }
+.food-dialog .food-create-tags { max-height: 220px; overflow-y: auto; }
+.food-create-tag-open { margin-top: 14px; }
+.food-create { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid #dce3de; }
+.food-create h4 { margin: 0 0 14px; }
+.food-create-fields { display: grid; gap: 12px; min-width: 0; padding: 0; border: 0; margin: 0; }
+.food-create textarea { width: 100%; padding: 10px; border: 1px solid #aebbb4; border-radius: 8px; resize: vertical; font: inherit; background: white; }
+.food-create-tags { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 10px; border: 1px solid #dce3de; border-radius: 8px; }
+.food-create-tags legend { font-size: 13px; }
+.food-create-tags label { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; font-size: 13px; }
+.food-create-tags p, .food-create-tag p { margin: 0; font-size: 12px; line-height: 1.5; }
+.food-create-tag { display: grid; gap: 8px; margin-top: 14px; }
+.food-create-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.food-create-actions button:last-child { color: white; background: #315f4b; }
+@media (max-width: 1000px) {
+  .meal-dates-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  .meal-dates-navigation { flex-wrap: wrap; gap: 8px; }
+  .meal-dates-navigation p { font-size: 13px; }
+  .meal-dates-navigation .meal-dates-current { width: 100%; }
+}
 .admin-users-section { margin-top: 24px; }
 .admin-users-table { min-width: 820px; }
 .admin-users-table .person-cell small { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .reset-password-action { min-height: 36px; padding: 0 12px; border: 1px solid #9bb1a5; border-radius: 7px; color: #28513e; background: #f3f8f5; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+.food-image-selection { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.worker-create-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.food-image-select { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.food-image-select > p { grid-column: 1 / -1; }
+@media (max-width: 480px) { .food-image-select { grid-template-columns: minmax(0, 1fr); } }
+.food-image-selection > img { width: 88px; height: 88px; flex: 0 0 88px; object-fit: cover; border-radius: 8px; }
+.food-image-selection > div { min-width: 0; display: grid; gap: 8px; justify-items: start; }
+
+.meal-planner-help, .meal-planner-status, .meal-planner-selection { color: #40574b; font-size: 14px; line-height: 1.6; }
+.meal-planner-status:empty { display: none; }
+.meal-planner-selection { padding: 12px; border-radius: 8px; background: #edf5ef; }
+.meal-planner-selection button, .meal-planner-error button { padding: 8px 12px; border: 1px solid #b8cbbf; border-radius: 7px; background: white; color: #315f4b; cursor: pointer; }
+.meal-planner-error { margin-bottom: 16px; color: #943f32; }
+.meal-dates-grid { grid-template-columns: 42px repeat(7, minmax(140px, 1fr)); grid-template-rows: auto repeat(3, 180px) auto; min-width: 1022px; }
+.meal-row-labels { position: sticky; left: 0; z-index: 1; display: grid; grid-row: span 5; grid-template-rows: subgrid; border-right: 1px solid #dce3de; background: #edf3ef; }
+.meal-row-labels > div { border-bottom: 1px solid #dce3de; }
+.meal-row-labels > div:last-child { border-bottom: 0; }
+.meal-row-label { display: flex; align-items: center; justify-content: center; }
+.meal-row-label span { writing-mode: vertical-rl; text-orientation: upright; text-transform: uppercase; font-size: 11px; font-weight: 700; letter-spacing: 2px; color: #315f4b; }
+.meal-dates-day { display: grid; grid-row: span 5; grid-template-rows: subgrid; min-width: 0; }
+.meal-slot { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 6px; border-bottom: 1px solid #dce3de; background: #fff; transition: background .15s; }
+.meal-slot.can-assign { background: #f4f9f5; cursor: pointer; }
+.meal-slot:focus-visible { outline: 3px solid #315f4b; outline-offset: -3px; }
+.meal-slot.is-target { outline: 2px dashed #315f4b; outline-offset: -3px; background: #e0f1e5; }
+.meal-slot-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px; font-size: 12px; color: #315f4b; }
+.meal-slot-heading small { font-size: 11px; }
+.meal-slot-foods { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 4px; flex: 1; min-width: 0; overflow-y: auto; margin: 6px 0; padding: 0; list-style: none; }
+.meal-slot-foods li { display: grid; grid-template-columns: minmax(0, 1fr) auto 24px; align-items: center; gap: 3px; min-width: 0; padding: 6px 0; border-bottom: 1px solid #e5e9e6; }
+.meal-slot-foods strong { min-width: 0; overflow-wrap: anywhere; font-size: 10.2px; line-height: 1.4; color: #26382f; }
+.meal-slot-foods span { white-space: nowrap; font-size: 9.35px; color: #40574b; }
+.meal-food-delete { display: inline-grid; place-items: center; flex: 0 0 24px; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 4px; color: #943f32; background: transparent; font-size: 19px; cursor: pointer; }
+.meal-food-delete:hover:not(:disabled) { background: #fbece9; }
+.meal-food-delete:disabled { opacity: .4; cursor: default; }
+.meal-food-delete:focus-visible { outline: 2px solid #943f32; outline-offset: 1px; }
+.meal-slot-add { width: 100%; min-height: 38px; padding: 7px 4px; border: 1px dashed #a6beaf; border-radius: 6px; color: #315f4b; background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
+.meal-slot-add:disabled { color: #6c7c72; cursor: default; }
+.meal-day-total { display: grid; gap: 6px; padding: 15px 10px; background: #edf3ef; color: #315f4b; }
+.meal-day-total span { font-size: 11px; }
+.meal-day-total strong { font-size: 15px; }
+.food-card[draggable="true"] { cursor: grab; }
+.food-card[draggable="true"]:active { cursor: grabbing; }
+.food-card.is-selected { border-color: #315f4b; box-shadow: inset 0 0 0 1px #315f4b; }
+.food-card .food-select { margin-top: 10px; }
+.food-select[aria-pressed="true"] { color: white; background: #315f4b; }
+.meal-slot-add:focus-visible, .food-select:focus-visible { outline: 3px solid #315f4b; outline-offset: 2px; }
+.meal-dates-calendar .meal-dates-navigation p { font-size: 12.75px; }
+.meal-dates-calendar .meal-dates-day header > span { font-size: 11.05px; }
+.meal-dates-calendar .meal-dates-day time { font-size: 22.1px; }
+.meal-dates-calendar .meal-dates-day small { font-size: 10.2px; }
+.meal-dates-calendar .meal-row-label span, .meal-dates-calendar .meal-day-total span { font-size: 9.35px; }
+.meal-dates-calendar .meal-day-total strong { font-size: 12.75px; }
+.meal-dates-calendar .meal-food-delete { font-size: 16.15px; }
+@media (max-width: 600px) { .meal-dates-calendar .meal-dates-navigation p { font-size: 11.05px; } }
