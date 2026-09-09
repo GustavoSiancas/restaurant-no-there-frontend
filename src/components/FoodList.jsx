@@ -1,25 +1,33 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { getFoods } from '../services/auth'
 import FoodCreate from './FoodCreate'
 import TagCreate from './TagCreate'
+import { foodColorStyle } from '../utils/foodColor'
 
-export default function FoodList({ selectedFood, onSelectFood, onDragFood, onDragEnd }) {
+export default function FoodList({ selectedFood, onSelectFood, onDragFood, onDragEnd, creating, setCreating, creatingTag, setCreatingTag }) {
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState({ page: 1, name: '' })
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
-  const [creating, setCreating] = useState(false)
-  const [creatingTag, setCreatingTag] = useState(false)
   const [knownTags, setKnownTags] = useState([])
   const [notice, setNotice] = useState('')
+  const resultsRef = useRef(null)
+  const [resultsHeight, setResultsHeight] = useState(0)
+
+  useLayoutEffect(() => {
+    if (!loading && !error && resultsRef.current) {
+      const height = resultsRef.current.getBoundingClientRect().height
+      setResultsHeight((previous) => Math.max(previous, height))
+    }
+  }, [result, loading, error])
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setError('')
-    getFoods({ ...query, page_size: 20 }).then((data) => {
+    getFoods({ ...query, page_size: 4 }).then((data) => {
       if (!active) return
       if (data.total_pages > 0 && query.page > data.total_pages) {
         setQuery((value) => ({ ...value, page: data.total_pages }))
@@ -44,8 +52,6 @@ export default function FoodList({ selectedFood, onSelectFood, onDragFood, onDra
   return (
     <aside className="food-list" aria-labelledby="food-list-title">
       <div className="food-list-heading"><h3 id="food-list-title">Comidas</h3>{!loading && !error && <span>{result?.total || 0} en total</span>}</div>
-      {!creating && <button type="button" className="food-create-open" onClick={() => { setCreating(true); setNotice('') }}>+ Nueva comida</button>}
-      <button type="button" className="food-create-open" onClick={() => setCreatingTag(true)}>+ Nueva etiqueta</button>
       {creatingTag && <TagCreate onCancel={() => setCreatingTag(false)} onCreated={(tag) => {
         setKnownTags((values) => [...values.filter((value) => value.id !== tag.id), tag])
         setCreatingTag(false)
@@ -62,7 +68,7 @@ export default function FoodList({ selectedFood, onSelectFood, onDragFood, onDra
         <label htmlFor="food-search">Buscar por nombre</label>
         <div><input id="food-search" type="search" placeholder="Ej. arroz" value={search} onChange={(event) => setSearch(event.target.value)} /><button type="submit">Buscar</button></div>
       </form>
-      <div className="food-list-results" aria-busy={loading}>
+      <div className="food-list-results" ref={resultsRef} style={{ minHeight: resultsHeight || undefined }} aria-busy={loading}>
         {loading ? <p role="status">Cargando comidas…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry((value) => value + 1)}>Reintentar</button></div> : result?.data?.length ? (
           <ul className="food-list-cards">
             {result.data.map((food) => (
@@ -78,7 +84,7 @@ export default function FoodList({ selectedFood, onSelectFood, onDragFood, onDra
                 <div className="food-card-info">
                   <h4>{food.name}</h4>
                   {food.total_calories != null && <strong className="food-card-calories">{Number(food.total_calories).toLocaleString('es-PE')} kcal</strong>}
-                  {!!food.tags?.length && <ul className="food-card-tags" aria-label="Etiquetas">{food.tags.map((tag) => <li key={tag.id}>{tag.name}</li>)}</ul>}
+                  {!!food.tags?.length && <ul className="food-card-tags" aria-label="Etiquetas">{food.tags.map((tag) => <li key={tag.id} style={foodColorStyle(tag.color)}>{tag.name}</li>)}</ul>}
                   {onSelectFood && <button type="button" className="food-select" aria-pressed={selectedFood?.id === food.id} onClick={() => onSelectFood(selectedFood?.id === food.id ? null : food)}>{selectedFood?.id === food.id ? 'Seleccionada' : 'Seleccionar'}</button>}
                 </div>
               </li>

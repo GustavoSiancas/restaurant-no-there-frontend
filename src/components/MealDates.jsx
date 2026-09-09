@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import FoodList from './FoodList'
+import { foodColorStyle } from '../utils/foodColor'
 import { createFoodDay, deleteFoodDay, getFoodDays } from '../services/auth'
 
 const dateFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -31,6 +32,33 @@ async function loadDay(date) {
   return data.find((day) => day.service_date === date) || { service_date: date, total_calories: 0, meals: [] }
 }
 
+function MealSlotFoods({ foods, unavailable, mealLabel, date, onRemove }) {
+  const listRef = useRef(null)
+  const [height, setHeight] = useState(0)
+  useEffect(() => {
+    const observer = new ResizeObserver(([entry]) => setHeight(entry.contentRect.height))
+    observer.observe(listRef.current)
+    return () => observer.disconnect()
+  }, [])
+  const rowHeight = (height - Math.max(0, foods.length - 1) * 4) / Math.max(1, foods.length)
+  const mode = rowHeight >= 110 ? 'large' : rowHeight >= 64 ? 'medium' : 'compact'
+  return <ul ref={listRef} className={`meal-slot-foods is-${mode}`} style={{ gridAutoRows: 'minmax(36px, 1fr)' }}>
+    {foods.map((item, index) => {
+      const food = item.food || item
+      const assignmentId = item.food_day_id ?? item.id
+      const name = food.name || item.food_name || 'Comida'
+      const photo = food.photo_url || item.photo_url
+      return <li key={assignmentId || index} style={foodColorStyle(food.mixed_color ?? item.mixed_color)}>
+        {photo && mode !== 'compact' && <img className="meal-food-photo" src={photo} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+        <div className="meal-food-details"><strong title={name}>{name}</strong><span>{calories(food.total_calories ?? item.total_calories ?? food.calories)}</span></div>
+        <button type="button" className="meal-food-delete" disabled={unavailable || !assignmentId}
+          aria-label={`Eliminar ${name} de ${mealLabel} del ${date}`} title={`Eliminar ${name}`}
+          onClick={(event) => { event.stopPropagation(); onRemove(date, assignmentId, name) }}>×</button>
+      </li>
+    })}
+  </ul>
+}
+
 export default function MealDates() {
   const [today, setToday] = useState(todayInPeru)
   const [offset, setOffset] = useState(0)
@@ -43,6 +71,9 @@ export default function MealDates() {
   const [dragging, setDragging] = useState(null)
   const [target, setTarget] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showFoods, setShowFoods] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [creatingTag, setCreatingTag] = useState(false)
   const savingRef = useRef(false)
   const days = weekDays(today, offset)
   const weekStart = days[0].key
@@ -109,10 +140,20 @@ export default function MealDates() {
   const unavailable = loading || saving || !!error
   return (
     <section className="panel-section meal-dates" aria-labelledby="meal-dates-title">
-      <div className="section-heading"><h2 id="meal-dates-title">Fecha de comidas</h2></div>
+      <div className="section-heading meal-dates-heading">
+        <h2 id="meal-dates-title">Fecha de comidas</h2>
+        <div className="meal-heading-actions">
+        <button type="button" className="meal-foods-toggle" onClick={() => { setShowFoods(true); setCreating(true) }}>+ Nueva comida</button>
+        <button type="button" className="meal-foods-toggle" onClick={() => { setShowFoods(true); setCreatingTag(true) }}>+ Nueva etiqueta</button>
+        <button type="button" className="meal-foods-toggle" aria-expanded={showFoods} aria-controls="meal-foods-panel"
+          onClick={() => { setShowFoods((value) => !value); setDragging(null); setTarget(null) }}>
+          {showFoods ? 'Ocultar comidas y etiquetas' : 'Comidas y etiquetas'}
+        </button>
+        </div>
+      </div>
       <div className="meal-planner-status" role="status">{saving ? 'Actualizando calendario…' : notice}</div>
       {selectedFood && <p className="meal-planner-selection">Seleccionada: <strong>{selectedFood.name}</strong> · {calories(selectedFood.total_calories)} <button type="button" onClick={() => setSelectedFood(null)}>Cancelar selección</button></p>}
-      <div className="meal-dates-layout">
+      <div className={`meal-dates-layout${showFoods ? '' : ' is-calendar-only'}`}>
         <div className="meal-dates-calendar">
           <div className="meal-dates-navigation">
             <button type="button" disabled={saving} aria-label="Semana anterior" onClick={() => setOffset((value) => value - 1)}>←</button>
@@ -143,18 +184,7 @@ export default function MealDates() {
                       onDragOver={(event) => { if (dragging && !unavailable) { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; setTarget(slot) } }}
                       onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setTarget(null) }}
                       onDrop={(event) => { event.preventDefault(); assignFood(key, type, dragging) }}>
-                      <ul className="meal-slot-foods">{(meal?.foods || []).map((item, index) => {
-                        const food = item.food || item
-                        const assignmentId = item.food_day_id ?? item.id
-                        const name = food.name || item.food_name || 'Comida'
-                        return <li key={assignmentId || index}>
-                          <strong title={name}>{name}</strong>
-                          <span>{calories(food.total_calories ?? item.total_calories ?? food.calories)}</span>
-                          <button type="button" className="meal-food-delete" disabled={unavailable || !assignmentId}
-                            aria-label={`Eliminar ${name} de ${mealLabel} del ${key}`} title={`Eliminar ${name}`}
-                            onClick={(event) => { event.stopPropagation(); removeFood(key, assignmentId, name) }}>×</button>
-                        </li>
-                      })}</ul>
+                      <MealSlotFoods foods={meal?.foods || []} unavailable={unavailable} mealLabel={mealLabel} date={key} onRemove={removeFood} />
                     </div>
                   })}
                   <footer className="meal-day-total"><span>Total del día</span><strong>{entries[key] ? calories(entries[key].total_calories) : '—'}</strong></footer>
@@ -163,7 +193,9 @@ export default function MealDates() {
             </div>
           </div>
         </div>
-        <FoodList selectedFood={selectedFood} onSelectFood={setSelectedFood} onDragFood={setDragging} onDragEnd={() => { setDragging(null); setTarget(null) }} />
+        <div id="meal-foods-panel" hidden={!showFoods}>
+          {showFoods && <FoodList creating={creating} setCreating={setCreating} creatingTag={creatingTag} setCreatingTag={setCreatingTag} selectedFood={selectedFood} onSelectFood={setSelectedFood} onDragFood={setDragging} onDragEnd={() => { setDragging(null); setTarget(null) }} />}
+        </div>
       </div>
     </section>
   )
