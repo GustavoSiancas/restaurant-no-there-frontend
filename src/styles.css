@@ -729,3 +729,16 @@ button.preview-period-card:hover { opacity: 1; border-color: #315f4b; background
 
 .person-cell > span { position: relative; overflow: hidden; }
 .person-cell > span > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.preview-table .meal-preview-row { --meal-tint: #fafcfb; --meal-accent: #83948a; background: var(--meal-tint); }
+.preview-table .meal-breakfast { --meal-tint: #fffaf2; --meal-accent: #c47a1b; }
+.preview-table .meal-lunch { --meal-tint: #f2faf5; --meal-accent: #36865a; }
+.preview-table .meal-dinner { --meal-tint: #f5f5fd; --meal-accent: #7761ac; }
+.preview-table .meal-preview-row:hover { background: var(--meal-tint); filter: brightness(.98); }
+.preview-table .meal-preview-row td:first-child { border-left: 4px solid var(--meal-accent); }
+.preview-meal-badge, .preview-shift-badge { display: inline-flex; align-items: center; white-space: nowrap; padding: 6px 10px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #e9eeeb; color: #43564b; }
+.preview-meal-badge.breakfast { color: #875009; background: #fbe7c6; }
+.preview-meal-badge.lunch { color: #246442; background: #dcefe3; }
+.preview-meal-badge.dinner { color: #5a4189; background: #e9e1f7; }
+.preview-shift-badge.day { color: #815e0b; background: #fff0bc; }
+.preview-shift-badge.night { color: #354f87; background: #e1e9fb; }
+.preview-meal-time { white-space: nowrap; font-variant-numeric: tabular-nums; }

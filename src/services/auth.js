@@ -371,9 +371,9 @@ export function downloadMealStatusReport(from, to) {
 }
 
 export function getShiftPreview(filters = {}) {
-  return apiRequest(`/workforce/shift-preview?${buildQuery(filters)}`)
+  return apiRequest(`/owner/meal-claims/preview?${buildQuery(filters)}`)
 }
 
 export function downloadShiftPreview(from, to) {
-  return downloadAuthenticated('/workforce/shift-preview/export.xlsx', { from, to }, `turnos-${from || 'hoy'}-${to || from || 'hoy'}.xlsx`)
+  return downloadAuthenticated('/owner/meal-claims/preview/export.xlsx', { from, to }, `pedidos-${from || 'hoy'}-${to || from || 'hoy'}.xlsx`)
 }

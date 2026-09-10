@@ -128,6 +128,24 @@ export default function ShiftPreview() {
 
     <div className="preview-summary"><article className="summary-meal breakfast"><span className="summary-meal-icon">☕</span><div><small>Desayunos</small><strong>{summary.by_meal?.BREAKFAST ?? 0}</strong></div></article><article className="summary-meal afternoon"><span className="summary-meal-icon">☀</span><div><small>Almuerzos</small><strong>{summary.by_meal?.LUNCH ?? 0}</strong></div></article><article className="summary-meal dinner"><span className="summary-meal-icon">☾</span><div><small>Cenas</small><strong>{summary.by_meal?.DINNER ?? 0}</strong></div></article></div>
 
-    {status.loading ? <div className="list-loading"><span className="large-spinner" /> Cargando pedidos…</div> : <><div className="table-scroll"><table className="workers-table preview-table"><thead><tr><th>Fecha</th><th>Trabajador</th><th>Documento</th><th>Código</th><th>Cargo</th><th>Departamento</th><th>Turno</th><th>Comidas asignadas</th></tr></thead><tbody>{rows.map((row, index) => <tr key={row.assignment_id || `${row.preview_date}-${row.worker?.id || index}`}><td><strong>{row.preview_date?.slice(0, 10)}</strong></td><td><strong>{row.worker?.full_name}</strong></td><td>{row.worker?.document_number}</td><td>{row.worker?.employee_code}</td><td>{row.worker?.job_title || '—'}</td><td>{row.worker?.department || '—'}</td><td><span className={`shift-label ${row.shift_type === 'NOCHE' || row.shift_type === 'NIGHT' ? 'night' : ''}`}>{row.shift_type}</span></td><td><div className="assigned-meals">{row.assigned_meals?.map((meal) => <span key={`${meal.meal_type}-${meal.service_date}`}><b>{meal.display_name}</b><small>{meal.service_date?.slice(0, 10)}</small>{meal.start}–{meal.end}</span>)}</div></td></tr>)}</tbody></table>{!rows.length && <div className="empty-report">No hay pedidos para el periodo seleccionado.</div>}</div><div className="pagination"><span>Mostrando {rows.length} registros en {preview?.dates?.length || 0} días</span></div></>}
+    {status.loading ? <div className="list-loading"><span className="large-spinner" /> Cargando pedidos…</div> : <>
+      <div className="table-scroll"><table className="workers-table preview-table"><thead><tr><th>Fecha</th><th>Trabajador</th><th>Documento</th><th>Cargo</th><th>Turno</th><th>Comida</th><th>Horario</th></tr></thead><tbody>
+        {rows.map((row, index) => {
+          const mealClass = { BREAKFAST: 'breakfast', LUNCH: 'lunch', DINNER: 'dinner' }[row.meal_type] || 'unknown'
+          const shiftClass = { DAY: 'day', NIGHT: 'night' }[row.shift_type] || 'unknown'
+          return <tr className={`meal-preview-row meal-${mealClass}`} key={`${row.assignment_id}-${row.worker?.worker_id}-${row.meal_date}-${row.meal_type}-${index}`}>
+            <td><strong>{row.meal_date || row.service_date?.slice(0, 10) || row.preview_date?.slice(0, 10)}</strong></td>
+            <td><strong>{row.worker?.full_name || '—'}</strong></td>
+            <td>{row.worker?.document_number || '—'}</td>
+            <td>{row.worker?.job_title || '—'}</td>
+            <td><span className={`preview-shift-badge ${shiftClass}`}>{({ DAY: '☀ Día', NIGHT: '☾ Noche' })[row.shift_type] || row.shift_type || '—'}</span></td>
+            <td><span className={`preview-meal-badge ${mealClass}`}>{row.display_name || ({ BREAKFAST: 'DESAYUNO', LUNCH: 'ALMUERZO', DINNER: 'CENA' })[row.meal_type] || row.meal_type || '—'}</span></td>
+            <td className="preview-meal-time">{row.start || '—'} – {row.end || '—'}</td>
+          </tr>
+        })}
+      </tbody></table>{!rows.length && <div className="empty-report">No hay pedidos para el periodo seleccionado.</div>}</div>
+      <div className="pagination"><span>Mostrando {rows.length} comidas en {preview?.dates?.length || 0} días</span></div>
+    </>}
+
   </section>
 }
