@@ -632,13 +632,27 @@ button.preview-period-card:hover { opacity: 1; border-color: #315f4b; background
 .admin-users-table .person-cell small { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .reset-password-action { min-height: 36px; padding: 0 12px; border: 1px solid #9bb1a5; border-radius: 7px; color: #28513e; background: #f3f8f5; font-size: 11px; font-weight: 700; cursor: pointer; }
 
-.food-image-selection { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .worker-create-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
-.food-image-select { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-.food-image-select > p { grid-column: 1 / -1; }
-@media (max-width: 480px) { .food-image-select { grid-template-columns: minmax(0, 1fr); } }
-.food-image-selection > img { width: 88px; height: 88px; flex: 0 0 88px; object-fit: cover; border-radius: 8px; }
-.food-image-selection > div { min-width: 0; display: grid; gap: 8px; justify-items: start; }
+.food-image-select { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); gap: 9px; }
+.image-picker-heading, .image-picker-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.image-picker-heading > span { color: #35483e; font-size: 13px; font-weight: 600; }
+.image-picker-heading > small { color: #718078; font-size: 11px; }
+.image-picker-zone { display: flex; align-items: center; gap: 16px; width: 100%; min-width: 0; min-height: 120px; padding: 20px; border: 1.5px dashed #b4c9bb; border-radius: 14px; background: #f7faf8; color: #315f4b; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; font: inherit; }
+.image-picker-zone:hover:not(:disabled) { border-color: #477b5e; background: #edf5ef; }
+.image-picker-zone:focus-visible, .image-picker-footer button:focus-visible { outline: 3px solid #719b80; outline-offset: 3px; }
+.image-picker-zone:disabled { opacity: .6; cursor: wait; }
+.image-picker-icon { display: grid; place-items: center; flex: 0 0 52px; height: 52px; border-radius: 14px; background: #e5efe8; }
+.image-picker-copy { display: grid; gap: 5px; min-width: 0; }
+.image-picker-copy strong { font-size: 14px; font-weight: 650; }
+.image-picker-copy > span { color: #566b5e; font-size: 12px; overflow-wrap: anywhere; }
+.image-picker-copy small { color: #718078; font-size: 11px; }
+.image-picker-plus { margin-left: auto; font-size: 24px; font-weight: 400; }
+.image-picker-zone.has-preview { border-style: solid; background: #f5f9f6; padding: 14px; }
+.image-picker-zone > img { width: 80px; height: 80px; flex: 0 0 80px; object-fit: cover; border-radius: 10px; }
+.image-picker-footer > span { color: #597261; font-size: 11px; }
+.image-picker-footer button { padding: 5px 0; border: 0; background: transparent; color: #935044; font: inherit; font-size: 12px; cursor: pointer; }
+.image-picker-footer button:disabled { opacity: .5; cursor: default; }
+@media (max-width: 480px) { .image-picker-zone { gap: 12px; padding: 15px; } .image-picker-plus { display: none; } .image-picker-zone > img { width: 64px; height: 64px; flex-basis: 64px; } }
 
 .meal-planner-help, .meal-planner-status, .meal-planner-selection { color: #40574b; font-size: 14px; line-height: 1.6; }
 .meal-planner-status:empty { display: none; }
