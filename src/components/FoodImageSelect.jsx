@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-export default function FoodImageSelect({ file, onChange, disabled }) {
+export default function FoodImageSelect({ file, onChange, disabled, itemLabel = 'comida' }) {
   const [preview, setPreview] = useState('')
   const [error, setError] = useState('')
   const input = useRef(null)
@@ -29,7 +29,7 @@ export default function FoodImageSelect({ file, onChange, disabled }) {
       <img src={preview} alt="Vista previa de la imagen" />
       <div><p>{file?.name}</p><button type="button" disabled={disabled} onClick={() => { onChange(null); setError(''); input.current.value = '' }}>Quitar imagen</button></div>
     </div>}
-    <p>La imagen se subirá al crear la comida.</p>
+    <p>La imagen se subirá al crear {itemLabel === 'trabajador' ? 'el trabajador' : 'la comida'}.</p>
     {error && <p role="alert" className="inline-error">{error}</p>}
   </div>
 }

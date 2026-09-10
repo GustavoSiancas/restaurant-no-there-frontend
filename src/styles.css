@@ -712,3 +712,6 @@ button.preview-period-card:hover { opacity: 1; border-color: #315f4b; background
 .tag-custom-color input[type="color"] { flex: 0 0 48px; width: 48px; height: 42px; padding: 4px; cursor: pointer; }
 .tag-custom-color input[type="text"] { min-width: 0; width: 100%; font-family: monospace; }
 .tag-color-preview { display: inline-block; max-width: 100%; margin-top: 12px; padding: 6px 10px; border-radius: 6px; background: var(--food-color); color: var(--food-text-color); font-size: 12px; overflow-wrap: anywhere; }
+
+.person-cell > span { position: relative; overflow: hidden; }
+.person-cell > span > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

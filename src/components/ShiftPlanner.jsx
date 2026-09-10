@@ -11,8 +11,8 @@ const toDateValue = (date) => {
 
 const shortDate = (date) => new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit' }).format(date)
 const longDate = (value) => new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`))
-const nameOf = (worker) => [worker?.profile?.first_name, worker?.profile?.last_name].filter(Boolean).join(' ') || 'Sin nombre'
-const detailOf = (worker) => [worker?.worker_information?.employee_code, worker?.worker_information?.department].filter(Boolean).join(' · ') || 'Sin información laboral'
+const nameOf = (worker) => [worker?.first_name, worker?.last_name].filter(Boolean).join(' ') || 'Sin nombre'
+const detailOf = (worker) => [worker?.dni, worker?.job_title].filter(Boolean).join(' · ') || 'Sin información laboral'
 
 function firstUpcomingMonday() {
   const today = new Date()
@@ -79,9 +79,9 @@ export default function ShiftPlanner({ workers }) {
   const [saved, setSaved] = useState(false)
   const [status, setStatus] = useState({ loading: false, error: '' })
 
-  const selectedWorkers = workers.filter((worker) => selectedIds.includes(worker.id))
+  const selectedWorkers = workers.filter((worker) => selectedIds.includes(worker.user_id))
   const availableWorkers = workers.filter((worker) => {
-    if (selectedIds.includes(worker.id)) return false
+    if (selectedIds.includes(worker.user_id)) return false
     return `${nameOf(worker)} ${detailOf(worker)}`.toLowerCase().includes(search.trim().toLowerCase())
   })
 
@@ -157,12 +157,12 @@ export default function ShiftPlanner({ workers }) {
     <div className="bulk-workers-grid">
       <article className="bulk-worker-column">
         <header><span>2</span><div><strong>Lista de trabajadores</strong><p>Doble clic para agregar · {availableWorkers.length} disponibles</p></div></header>
-        <input className="worker-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, código o área…" />
-        <div className="bulk-worker-list">{availableWorkers.length ? availableWorkers.map((worker) => <AvailableWorker worker={worker} onAdd={() => addWorker(worker.id)} key={worker.id} />) : <p className="bulk-empty">No hay trabajadores disponibles.</p>}</div>
+        <input className="worker-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, DNI o cargo…" />
+        <div className="bulk-worker-list">{availableWorkers.length ? availableWorkers.map((worker) => <AvailableWorker worker={worker} onAdd={() => addWorker(worker.user_id)} key={worker.user_id} />) : <p className="bulk-empty">No hay trabajadores disponibles.</p>}</div>
       </article>
       <article className="bulk-worker-column selected-workers">
         <header><span>3</span><div><strong>Trabajadores seleccionados</strong><p>{selectedWorkers.length} incluidos en la asignación</p></div></header>
-        <div className="selected-worker-chips">{selectedWorkers.length ? selectedWorkers.map((worker) => <span className="selected-worker-chip" key={worker.id}>{nameOf(worker)}<button type="button" onClick={() => removeWorker(worker.id)} aria-label={`Quitar a ${nameOf(worker)}`}>×</button></span>) : <p className="bulk-empty">Haz doble clic sobre un trabajador para agregarlo aquí.</p>}</div>
+        <div className="selected-worker-chips">{selectedWorkers.length ? selectedWorkers.map((worker) => <span className="selected-worker-chip" key={worker.user_id}>{nameOf(worker)}<button type="button" onClick={() => removeWorker(worker.user_id)} aria-label={`Quitar a ${nameOf(worker)}`}>×</button></span>) : <p className="bulk-empty">Haz doble clic sobre un trabajador para agregarlo aquí.</p>}</div>
       </article>
     </div>
 

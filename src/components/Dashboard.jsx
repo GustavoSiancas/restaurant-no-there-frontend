@@ -122,6 +122,7 @@ function CreateForm({ kind, onClose }) {
       if (management) await registerManagement(values)
       else if (collaborator) await registerCollaborator(values)
       else {
+        values.photo_url = null
         if (image) {
           if (uploadedImage.current?.file !== image) {
             const uploaded = await uploadImage(image)
@@ -151,14 +152,11 @@ function CreateForm({ kind, onClose }) {
           {management && <label className="dash-field"><span>Rol</span><select name="role" required defaultValue="OWNER"><option value="OWNER">Owner</option><option value="RRHH">Recursos humanos</option></select></label>}
         </> : <>
           <Field label="DNI" name="dni" inputMode="numeric" placeholder="10203040" />
-          <Field label="Código de empleado" name="employee_code" placeholder="EMP-001" />
           <Field label="Nombre" name="first_name" placeholder="Juan" />
           <Field label="Apellido" name="last_name" placeholder="Pérez" />
-          <Field label="Correo" name="email" type="email" placeholder="worker@empresa.com" />
-          <FoodImageSelect file={image} disabled={status.loading} onChange={(file) => { setImage(file); uploadedImage.current = null }} />
+          <FoodImageSelect itemLabel="trabajador" file={image} disabled={status.loading} onChange={(file) => { setImage(file); uploadedImage.current = null }} />
           <Field label="Cargo" name="job_title" placeholder="Operario" />
-          <Field label="Departamento" name="department" placeholder="Producción" />
-          <Field label="Fecha de contratación" name="hire_date" type="date" />
+          <label className="dash-field"><span>Estado</span><select name="status" required defaultValue="active"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label>
         </>}
       </fieldset>
       {status.error && <p className="form-error" role="alert">{status.error}</p>}
@@ -349,10 +347,10 @@ export default function Dashboard() {
           {activeModule === 'workers' && canCreateWorker && <section className="panel-section"><div className="section-heading"><div><p className="section-kicker">Equipo</p><h2>Trabajadores</h2><p>Personal habilitado para registrar sus comidas.</p></div><button className="primary-action" onClick={() => setModal('worker')}><span>＋</span> Nuevo trabajador</button></div>
             {listsError && <p className="inline-error">{listsError}</p>}
             {listsLoading ? <div className="list-loading"><span className="large-spinner" /> Cargando trabajadores…</div> : workers.length ? <>
-              <div className="table-scroll"><table className="workers-table"><thead><tr><th>Trabajador</th><th>DNI</th><th>Código</th><th>Cargo</th><th>Departamento</th><th>Estado</th><th>Turnos</th></tr></thead><tbody>{visibleWorkers.map((worker) => {
-                const workerName = [worker.profile?.first_name, worker.profile?.last_name].filter(Boolean).join(' ') || 'Sin nombre'
-                const dni = worker.credentials?.find((credential) => credential.type === 'DNI')?.identifier || worker.dni || '—'
-                return <tr key={worker.id}><td><div className="person-cell"><span>{workerName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</span><div><strong>{workerName}</strong><small>{worker.profile?.email || 'Sin correo'}</small></div></div></td><td>{dni}</td><td>{worker.worker_information?.employee_code || '—'}</td><td>{worker.worker_information?.job_title || '—'}</td><td>{worker.worker_information?.department || '—'}</td><td><span className={`status-pill ${worker.active ? 'is-active' : 'is-inactive'}`}>{worker.active ? 'Activo' : 'Inactivo'}</span></td><td><button className="view-shifts" onClick={() => setCalendarWorker(worker)} title="Ver calendario de turnos" aria-label={`Ver turnos de ${workerName}`}>◉</button></td></tr>
+              <div className="table-scroll"><table className="workers-table"><thead><tr><th>Trabajador</th><th>DNI</th><th>Cargo</th><th>Estado</th><th>Turnos</th></tr></thead><tbody>{visibleWorkers.map((worker) => {
+                const workerName = [worker.first_name, worker.last_name].filter(Boolean).join(' ') || 'Sin nombre'
+                const dni = worker.dni || '—'
+                return <tr key={worker.user_id}><td><div className="person-cell"><span>{workerName.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}{worker.photo_url && <img src={worker.photo_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span><div><strong>{workerName}</strong></div></div></td><td>{dni}</td><td>{worker.job_title || '—'}</td><td><span className={`status-pill ${worker.status === 'active' ? 'is-active' : 'is-inactive'}`}>{worker.status === 'active' ? 'Activo' : 'Inactivo'}</span></td><td><button className="view-shifts" onClick={() => setCalendarWorker(worker)} title="Ver calendario de turnos" aria-label={`Ver turnos de ${workerName}`}>◉</button></td></tr>
               })}</tbody></table></div>
               <div className="pagination"><span>Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, workers.length)} de {workers.length}</span><div><button disabled={page === 1} onClick={() => setPage((value) => value - 1)}>←</button><strong>{page} / {pageCount}</strong><button disabled={page === pageCount} onClick={() => setPage((value) => value + 1)}>→</button></div></div>
             </> : <div className="empty-table"><strong>Aún no hay trabajadores</strong><p>Crea el primer trabajador para comenzar.</p></div>}

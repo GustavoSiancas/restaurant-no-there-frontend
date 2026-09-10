@@ -475,8 +475,8 @@ export default function WorkerShiftCalendar({
 
   const name =
     [
-      worker.profile?.first_name,
-      worker.profile?.last_name,
+      worker.first_name,
+      worker.last_name,
     ]
       .filter(Boolean)
       .join(' ') ||
@@ -508,7 +508,7 @@ export default function WorkerShiftCalendar({
     }))
 
     getWorkerShifts(
-      worker.id,
+      worker.user_id,
       from,
       to
     )
@@ -539,7 +539,7 @@ export default function WorkerShiftCalendar({
   useEffect(
     load,
     [
-      worker.id,
+      worker.user_id,
       from,
       to,
     ]
@@ -1233,7 +1233,7 @@ export default function WorkerShiftCalendar({
           <ShiftEditor
             {...editor}
             workerId={
-              worker.id
+              worker.user_id
             }
             onClose={() =>
               setEditor(null)
